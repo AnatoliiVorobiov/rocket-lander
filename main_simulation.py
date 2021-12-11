@@ -3,7 +3,7 @@ Author: Reuben Ferrante
 Date:   16/08/2017
 Description: This is the  main running point of the simulation. Set settings, algorithm, episodes,...
 """
-
+import sys, math
 from environments.rocketlander import RocketLander
 from constants import LEFT_GROUND_CONTACT, RIGHT_GROUND_CONTACT
 import numpy as np
@@ -37,9 +37,9 @@ if __name__ == "__main__":
             total_reward += r   # Accumulate reward
             # -------------------------------------
             # Optional render
-            env._render()
+            env._render('human')
             # Draw the target
-            env.draw_marker(env.landing_coordinates[0], env.landing_coordinates[1])
+            # env.draw_marker(env.landing_coordinates[0], env.landing_coordinates[1])
             # Refresh render
             env.refresh(render=False)
 
