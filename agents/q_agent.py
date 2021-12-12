@@ -1,17 +1,9 @@
-"""
-Author: Reuben Ferrante
-Date:   10/05/2017
-Description: Function Approximation Q-Learning.
-"""
-
 import _pickle
 import numpy as np
 from constants import *
 
 
-class FunctionApproximation():
-    """ Q-Learning implementation. """
-
+class FunctionApproximation:
     def __init__(self, state, low_discretization, load=None, epsilon=0.1, alpha=0.001):
         self.low_discretization = low_discretization
         self.gamma = 0.9
@@ -20,15 +12,17 @@ class FunctionApproximation():
 
         self.epsilon = epsilon
         self.alpha = alpha
-        self.numberoffeatures = len(self.get_all_features(state, [0, 0, 0]))
-        # Intialise theta optimistically with small positive values
+        self.number_of_features = len(self.get_all_features(state, [0, 0, 0]))
+        print(f'number_of_features {self.number_of_features}')
+        # Initialise theta optimistically with small positive values
         if load is not None:
-            data = _pickle.load(open(load, 'rb'))
-            _, theta = data[-1]
+            theta = _pickle.load(open(load, 'rb'))
             self.theta = theta
+            print(f'load shape {self.theta.shape}')
             # print(self.theta)
         else:
-            self.theta = np.random.uniform(-10, 10, (self.numberoffeatures, 1))
+            self.theta = np.random.uniform(-10, 10, (self.number_of_features, 1))
+            print(f'new shape {self.theta.shape}')
         self.actionSet = self.buildActionSet()
         self.number_of_actions = len(self.actionSet)
         self.reward = 0
@@ -88,7 +82,7 @@ class FunctionApproximation():
         error = self.reward + self.gamma * maxQ - Qsa
         self.error = error
 
-        grad = features.reshape(self.numberoffeatures, 1)
+        grad = features.reshape(self.number_of_features, 1)
 
         self.theta = self.theta + self.alpha * error * grad
 

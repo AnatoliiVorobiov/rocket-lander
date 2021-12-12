@@ -1,15 +1,7 @@
-"""
-Author: Reuben Ferrante
-Date:   10/05/2017
-Description: PID algorithm definitions. Slight deviation from PEP convention: action variables are defined in capitals.
-"""
-
-from constants import *
 import abc
 
 
-class PID():
-    """ Called from the children of PID_Framework"""
+class PIDHelper:
     def __init__(self, Kp, Ki, Kd):
         self.Kp = Kp
         self.Ki = Ki
@@ -27,22 +19,19 @@ class PID():
         self.increment_intregral_error(error)
         return self.Kp * error + self.Ki * self.accumulated_error + self.Kd * dt_error
 
-class PID_Framework():
-    """ Sets the skeleton code for the actual pid algorithms (children) to inherit. """
 
+class PIDAbstract:
     @abc.abstractmethod
     def pid_algorithm(self, s, x_target, y_target):
-        pass
+        raise NotImplementedError
 
 
-class PID_Benchmark(PID_Framework):
-    """ Tuned PID Benchmark against which all other algorithms are compared. """
-
+class PIDTuned(PIDAbstract):
     def __init__(self):
-        super(PID_Benchmark, self).__init__()
-        self.Fe_PID = PID(10, 0, 10)
-        self.psi_PID = PID(0.085, 0.001, 10.55)
-        self.Fs_theta_PID = PID(5, 0, 6)
+        super(PIDTuned, self).__init__()
+        self.Fe_PID = PIDHelper(10, 0, 10)
+        self.psi_PID = PIDHelper(0.085, 0.001, 10.55)
+        self.Fs_theta_PID = PIDHelper(5, 0, 6)
 
     def pid_algorithm(self, s, x_target=None, y_target=None):
         dx, dy, vel_x, vel_y, theta, omega, legContact_left, legContact_right = s
@@ -78,14 +67,12 @@ class PID_Benchmark(PID_Framework):
         return Fe, Fs, psi
 
 
-class PID_Heuristic_Benchmark(PID_Framework):
-    """ Heuristic PID Benchmark """
-
+class PIDHeuristic(PIDAbstract):
     def __init__(self):
-        super(PID_Heuristic_Benchmark, self).__init__()
-        self.Fe = PID(10, 0, 10)
-        self.psi = PID(0.01, 0, 0.01)
-        self.Fs = PID(10, 0, 30)
+        super(PIDHeuristic, self).__init__()
+        self.Fe = PIDHelper(10, 0, 10)
+        self.psi = PIDHelper(0.01, 0, 0.01)
+        self.Fs = PIDHelper(10, 0, 30)
 
     def pid_algorithm(self, s, x_target, y_target):
         dx, dy, vel_x, vel_y, theta, omega, legContact_left, legContact_right = s
@@ -108,12 +95,10 @@ class PID_Heuristic_Benchmark(PID_Framework):
         return Fe, Fs, psi
 
 
-class PID_psi(PID_Framework):
-    """ PID for controlling just the angle of the rocket nozzle. """
-
+class PIDNozzle(PIDAbstract):
     def __init__(self):
-        super(PID_psi, self).__init__()
-        self.psi = PID(0.1, 0, 0.01)
+        super(PIDNozzle, self).__init__()
+        self.psi = PIDHelper(0.1, 0, 0.01)
 
     def pid_algorithm(self, s, x_target=None, y_target=None):
         dx, dy, vel_x, vel_y, theta, omega, legContact_left, legContact_right = s

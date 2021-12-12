@@ -169,8 +169,8 @@ class RocketLander(gym.Env):
         # nozzle or the bottom of the first stage rocket
 
         # Main Force Calculations
-        if self.remaining_fuel == 0:
-            logging.info("Strictly speaking, you're out of fuel, but act anyway.")
+        # if self.remaining_fuel == 0:
+        #     logging.info("Strictly speaking, you're out of fuel, but act anyway.")
         m_power = self.__main_engines_force_computation(action, rocketPart=part)
         s_power, engine_dir = self.__side_engines_force_computation(action)
 
@@ -576,6 +576,9 @@ class RocketLander(gym.Env):
 
         #return self.viewer.render(return_rgb_array=mode == 'rgb_array')
 
+    def render(self, mode='rgb_array'):
+        return self._render(mode)
+
     def refresh(self, mode='human', render=False):
         """
         Used instead of _render in order to draw user defined drawings from controllers, e.g. trajectories
@@ -590,7 +593,7 @@ class RocketLander(gym.Env):
             self.viewer.set_bounds(0, W, 0, H)
 
         if render:
-            self.render()
+            self.render('human')
         return self.viewer.render(return_rgb_array=mode == 'rgb_array')
 
     def _render_lander(self):

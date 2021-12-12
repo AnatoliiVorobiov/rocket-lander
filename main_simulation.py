@@ -6,7 +6,7 @@ Description: This is the  main running point of the simulation. Set settings, al
 from environments.rocketlander import RocketLander
 from constants import LEFT_GROUND_CONTACT, RIGHT_GROUND_CONTACT
 import numpy as np
-from control_and_ai import agents
+from agents import agents_abstract
 
 
 if __name__ == "__main__":
@@ -21,8 +21,9 @@ if __name__ == "__main__":
     s = env._reset()
 
     # Initialize agent
-    agent = agents.PID_Controller()
-    # agent = agents.Q_Learning_Controller(s, True)
+    # agent = agents_abstract.PIDAgent()
+    # agent = agents_abstract.QAgent(s, True, load='./agents/q_trained.p')
+    agent = agents_abstract.QAgent(s, False, load='./agents/q_hd_trained.p')
 
     left_or_right_barge_movement = np.random.randint(0, 2)
     epsilon = 0.05
