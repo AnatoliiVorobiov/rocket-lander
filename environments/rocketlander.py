@@ -127,6 +127,9 @@ class RocketLander(gym.Env):
         self.landing_coordinates = (5, 5)
         return self._step(np.array([0, 0, 0]))[0] # Step through one action = [0, 0, 0] and return the state, reward etc.
 
+    def reset(self):
+        return self._reset()
+
     def _destroy(self):
         if not self.main_base: return
         self.world.contactListener = None
@@ -203,6 +206,9 @@ class RocketLander(gym.Env):
         self._update_particles()
 
         return np.array(state), reward, done, {}  # {} = info (required by parent class)
+
+    def step(self, action):
+        return self._step(action)
 
     """ PROBLEM SPECIFIC - PHYSICS, STATES, REWARDS"""
 

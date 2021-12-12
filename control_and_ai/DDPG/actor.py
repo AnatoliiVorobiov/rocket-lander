@@ -4,7 +4,8 @@ Date:   10/05/2017
 Description: Actor network definition using Tensorflow.
 """
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 from .utils import layer, batch_layer
 
 class Actor():

@@ -11,7 +11,7 @@ from .utils import layer, batch_layer
 class Critic():
 
     def __init__(self, sess, action_space_size, env_space_size, learning_rate=0.001, gamma=0.99, tau=0.001,
-            optimizer=tf.train.AdamOptimizer):
+            optimizer=tf.optimizers.Adam):
         self.sess = sess
         self.learning_rate = learning_rate
         self.gamma = gamma

@@ -4,7 +4,8 @@ Date:   10/05/2017
 Description: NN layer helper functions, normalization.
 """
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 import sklearn.preprocessing
 import numpy as np
 
