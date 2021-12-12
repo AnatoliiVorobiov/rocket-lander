@@ -23,11 +23,6 @@ if __name__ == "__main__":
     # Initialize agent
     agent = agents.PID_Controller()
     # agent = agents.Q_Learning_Controller(s, True)
-    # agent = agents.Q_Learning_Controller_Longer_State(s, False)
-    # agent = agents.MPC_Controller(env)
-    # agent = agents.Normalized_DDPG_Controller(env)
-    # agent = agents.Unnormalized_DDPG_Controller_Longer_State(env)
-
 
     left_or_right_barge_movement = np.random.randint(0, 2)
     epsilon = 0.05

@@ -6,7 +6,6 @@ Description: Scripts that train the Function Approximation RL networks.
 
 import _pickle
 import logging
-from control_and_ai.helpers import *
 from control_and_ai.function_approximation_q_learning import *
 from main_simulation import *
 
