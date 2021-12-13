@@ -13,7 +13,7 @@ MIN = [-1, -1, 0, 0, -1, -1, 0, 0]
 MAX = [1, 1, 5, 5, 1, 1, 1, 1]
 CHUNK_MULTIPLIER = list(N_CHUNKS[i] / (MAX[i] - MIN[i]) for i in range(S_SIZE))
 
-K = [0, 0.1, 0.5, 1, 3, 6, 10]
+K = [0, 0.05, 0.1, 0.3, 0.5, 0.8, 1]
 
 
 class QPIDAgent:
@@ -22,6 +22,8 @@ class QPIDAgent:
             self.tables = self.new_tables()
         else:
             self.tables = self.load_tables(load_path)
+
+        self.pids = list(PIDController() for _ in range(N_CONTROLLERS))
 
         self.prev_s = []
         self.prev_k_indices = []
@@ -85,5 +87,34 @@ class QPIDAgent:
     # ==== PID + Q tables ====
     def get_actions(self, s, eps):
         """Compute action based on PID coefficients from Q-tables"""
-        # TODO use get_coefficients to compute PID output
-        pass
+        kp1, ki1, kd1, kp2, ki2, kd2, kp3, ki3, kd3 = self.get_coefficients(s, eps)
+        dx, dy, vel_x, vel_y, theta, theta_dot, leg_contact_left, leg_contact_right = s
+
+        xy_error = math.sqrt(dx*dx+dy*dy)
+        eng = self.pids[0].compute_output(xy_error, kp1, ki1, kd1)
+        nuzzle_angle = self.pids[1].compute_output(xy_error, kp2, ki2, kd2)
+
+        theta_error = abs(theta) + abs(theta_dot)
+        nitro = self.pids[2].compute_output(theta_error, kp3, ki3, kd3)
+
+        # TODO check if values are in the action range
+        return eng, nuzzle_angle, nitro
+
+
+class PIDController:
+    def __init__(self):
+        self.accumulated_error = 0
+        self.prev_error = 0
+
+    def increment_integral_error(self, error, limit=3):
+        self.accumulated_error = self.accumulated_error + error
+        if self.accumulated_error > limit:
+            self.accumulated_error = limit
+        elif self.accumulated_error < limit:
+            self.accumulated_error = -limit
+
+    def compute_output(self, error, kp, ki, kd):
+        self.increment_integral_error(error)
+        dt_error = error - self.prev_error
+        self.prev_error = error
+        return kp * error + ki * self.accumulated_error + kd * dt_error
