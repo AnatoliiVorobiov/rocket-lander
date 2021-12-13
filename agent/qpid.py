@@ -25,8 +25,8 @@ class QPIDAgent:
 
         self.pids = list(PIDController() for _ in range(N_CONTROLLERS))
 
-        self.prev_s = []
-        self.prev_k_indices = []
+        self.prev_s = ()
+        self.prev_k_indices = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0])
 
     # ==== Q tables ====
     @staticmethod
@@ -75,14 +75,19 @@ class QPIDAgent:
 
         return coefficients
 
-    def update_tables(self, new_s, reward):
+    def update_tables(self, new_s, reward, lr, discount):
         """Compute new values for tables based on previous action"""
         if len(self.prev_s) == 0:
             print('Attempting to update tables without experience')
             return
 
         new_s = self.discretize(new_s)
-        # TODO
+
+        prev_sl = (slice(0, N_TABLES),) + self.prev_s
+        sl = (slice(0, N_TABLES),) + new_s
+
+        td = lr * (reward + discount * self.tables[sl].max(axis=0) - self.tables[prev_sl][self.prev_k_indices])
+        self.tables[prev_sl][self.prev_k_indices] = self.tables[prev_sl][self.prev_k_indices] + td
 
     # ==== PID + Q tables ====
     def get_actions(self, s, eps):
