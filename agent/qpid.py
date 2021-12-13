@@ -4,7 +4,7 @@ import random
 import numpy as np
 
 
-S_SIZE = 8  # number of observations in a state
+S_SIZE = 8  # number of variables in a state
 N_CONTROLLERS = 3
 N_TABLES = N_CONTROLLERS * 3
 
@@ -29,6 +29,7 @@ class QPIDAgent:
     # ==== Q tables ====
     @staticmethod
     def discretize(s):
+        """Discretize state from environment to int values from 0 to N_CHUNKS (excluded)"""
         discrete_s = []
         for i in range(S_SIZE):
             if s[i] <= MIN[i]:
@@ -54,6 +55,8 @@ class QPIDAgent:
         return self.new_tables()
 
     def get_coefficients(self, s, eps):
+        """Get coefficients for PID controllers.
+        From Q-learning point of view, it just returns actions (one per table)"""
         s = self.discretize(s)
         if eps > 0 and random.random() < eps:
             k_indices = np.random.randint(len(K), size=N_TABLES)
@@ -71,6 +74,7 @@ class QPIDAgent:
         return coefficients
 
     def update_tables(self, new_s, reward):
+        """Compute new values for tables based on previous action"""
         if len(self.prev_s) == 0:
             print('Attempting to update tables without experience')
             return
@@ -80,5 +84,6 @@ class QPIDAgent:
 
     # ==== PID + Q tables ====
     def get_actions(self, s, eps):
+        """Compute action based on PID coefficients from Q-tables"""
         # TODO use get_coefficients to compute PID output
         pass
