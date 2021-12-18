@@ -256,7 +256,8 @@ class RocketLander(gym.Env):
         # Main engine
         m_power = 0
         try:
-            if (action[0] > 0.0):
+            angle_is_normal = self.lander.angle <= (math.pi / 2) and self.lander.angle > (-math.pi / 2)
+            if (action[0] > 0.0 and angle_is_normal):
                 # Limits
                 m_power = (np.clip(action[0], 0.0, 1.0) + 1.0) * 0.3  # 0.5..1.0
                 assert m_power >= 0.3 and m_power <= 1.0
