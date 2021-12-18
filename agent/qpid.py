@@ -8,12 +8,12 @@ S_SIZE = 8  # number of variables in a state
 N_CONTROLLERS = 3
 N_TABLES = N_CONTROLLERS * 3
 
-N_CHUNKS = [5, 5, 5, 5, 5, 5, 2, 2]
-MIN = [-1, -1, 0, 0, -1, -1, 0, 0]
-MAX = [1, 1, 5, 5, 1, 1, 1, 1]
+N_CHUNKS = [10, 10, 10, 10, 10, 10, 2, 2]
+MIN = [0, 0,  -3, -3, -1, -1, 0, 0]
+MAX = [2, 1.3, 3,  3,  1,  1, 1, 1]
 CHUNK_MULTIPLIER = list(N_CHUNKS[i] / (MAX[i] - MIN[i]) for i in range(S_SIZE))
 
-K = [0, 0.05, 0.1, 0.3, 0.5, 0.8, 1]
+K = list(i/0.1 for i in range(-10, 50))
 
 
 class QPIDAgent:
@@ -49,11 +49,11 @@ class QPIDAgent:
         return tables
 
     def save_tables(self, save_path):
-        # TODO
+        # TODO save tables
         pass
 
     def load_tables(self, load_path):
-        # TODO
+        # TODO load tables
         return self.new_tables()
 
     def get_coefficients(self, s, eps):
@@ -61,10 +61,12 @@ class QPIDAgent:
         From Q-learning point of view, it just returns actions (one per table)"""
         s = self.discretize(s)
         if eps > 0 and random.random() < eps:
-            k_indices = np.random.randint(len(K), size=N_TABLES)
+            k_indices = np.random.randint(low=len(K), size=N_TABLES)
+            print('rand', k_indices)
         else:
             sl = (slice(0, N_TABLES),) + s
             k_indices = self.tables[sl].argmax(axis=1)
+            print('greedy', k_indices)
 
         coefficients = []
         for i in k_indices:
@@ -83,11 +85,16 @@ class QPIDAgent:
 
         new_s = self.discretize(new_s)
 
-        prev_sl = (slice(0, N_TABLES),) + self.prev_s
+        prev_mask = np.zeros(self.tables.shape, dtype=bool)
+        for table_i in range(N_TABLES):
+            prev_mask[(table_i,) + self.prev_s + (self.prev_k_indices[table_i],)] = True
+
         sl = (slice(0, N_TABLES),) + new_s
 
-        td = lr * (reward + discount * self.tables[sl].max(axis=0) - self.tables[prev_sl][self.prev_k_indices])
-        self.tables[prev_sl][self.prev_k_indices] = self.tables[prev_sl][self.prev_k_indices] + td
+        tmp1 = discount * self.tables[sl].max(axis=1)
+        tmp2 = self.tables[prev_mask]
+        td = lr * (reward + tmp1 - tmp2)
+        self.tables[prev_mask] = self.tables[prev_mask] + td
 
     # ==== PID + Q tables ====
     def get_actions(self, s, eps):
@@ -102,8 +109,8 @@ class QPIDAgent:
         theta_error = abs(theta) + abs(theta_dot)
         nitro = self.pids[2].compute_output(theta_error, kp3, ki3, kd3)
 
-        # TODO check if values are in the action range
-        return eng, nuzzle_angle, nitro
+        # environment already limits actions to their ranges, so we don't need to limit those manually
+        return eng, nitro, nuzzle_angle
 
 
 class PIDController:
