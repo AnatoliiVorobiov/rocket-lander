@@ -1,3 +1,5 @@
+import math
+
 from Box2D.b2 import (edgeShape, circleShape, fixtureDef, polygonShape, revoluteJointDef, contactListener)
 import Box2D
 from gym.envs.classic_control import rendering
@@ -53,6 +55,8 @@ top_const_barge, bottom_const_barge, left_const_barge, right_const_barge = right
 rocket_x, rocket_y = (right_const_barge + left_const_barge) / 2, top_const_barge + 1
 rocket_initial_coordinates = (rocket_x, rocket_y)
 
+targetX = (left_const_barge_coordinates[3] + left_const_barge_coordinates[2]) / 2
+
 class RocketLander(gym.Env):
     metadata = {
         'render.modes': ['human', 'rgb_array'],
@@ -75,10 +79,7 @@ class RocketLander(gym.Env):
         self.state = []
         self.prev_shaping = None
 
-        if settings.get('Observation Space Size'):
-            self.observation_space = spaces.Box(-np.inf, +np.inf, (settings.get('Observation Space Size'),), dytype=np.float32)
-        else:
-            self.observation_space = spaces.Box(-np.inf, +np.inf, (8,), dtype=np.float32)
+        self.observation_space = spaces.Box(-np.inf, +np.inf, (8,), dtype=np.float32)
         self.lander_tilt_angle_limit = THETA_LIMIT
 
         self.game_over = False
@@ -101,8 +102,6 @@ class RocketLander(gym.Env):
         assert BARGE_LENGTH_X1_RATIO < BARGE_LENGTH_X2_RATIO, 'Barge Length X1 must be 0-1 and smaller than X2'
 
         self.landing_barge_coordinates = left_const_barge_coordinates_edges
-        self.initial_barge_coordinates = left_const_barge_coordinates_edges
-
         self._create_base_static_edges()
         # --- END BARGE ---
 
@@ -117,7 +116,8 @@ class RocketLander(gym.Env):
         self.world.contactListener_keepref = ContactDetector(self)
         self.world.contactListener = self.world.contactListener_keepref
 
-        smoothed_terrain_edges, terrain_divider_coordinates_x = self._create_terrain(TERRAIN_CHUNKS)
+        self.helipad_y = left_const_barge_coordinates[0]
+        self.bargeHeight = left_const_barge_coordinates[0]
 
         self.initial_mass = 0
         self.remaining_fuel = 0
@@ -196,21 +196,23 @@ class RocketLander(gym.Env):
         self.state = state  # Keep a record of the new state
 
         # Rewards for reinforcement learning
-        reward = self.__compute_rewards(state, m_power, s_power,
-                                        part.angle)  # part angle can be used as part of the reward
+        reward = self.__compute_rewards(state, m_power, s_power, part.angle)  # part angle can be used as part of the reward
 
         # Check if the game is done, adjust reward based on the final state of the body
         state_reset_conditions = [
             self.game_over,  # Evaluated depending on body contact
-            abs(state[XX]) >= 1.0,  # Rocket moves out of x-space
+            abs(state[XX]) >= 2.0,  # Rocket moves out of x-space
             state[YY] < 0 or state[YY] > 1.3,  # Rocket moves out of y-space or below barge
-            abs(state[THETA]) > THETA_LIMIT]  # Rocket tilts greater than the "controllable" limit
+            abs(state[THETA]) > THETA_LIMIT # Rocket tilts greater than the "controllable" limit
+        ]
         done = False
         if any(state_reset_conditions):
-            done = False
+            print(state_reset_conditions)
+            print(state[YY], state[THETA])
+            done = True
             reward = -10
         if not self.lander.awake:
-            done = False
+            done = True
             reward = +10
 
         self._update_particles()
@@ -321,11 +323,10 @@ class RocketLander(gym.Env):
         pos = self.lander.position
         vel = self.lander.linearVelocity
 
-        target = (self.initial_barge_coordinates[1][0] - self.initial_barge_coordinates[0][0]) / 2 + \
-                 self.initial_barge_coordinates[0][0]
+
         state = [
-            (pos.x - target) / (W / 2),
-            (pos.y - (self.bargeHeight + (LEG_DOWN / SCALE))) / (W / 2) - LANDING_VERTICAL_CALIBRATION,
+            (pos.x - targetX) / (W / 2),
+            (pos.y - (self.bargeHeight + (LEG_DOWN / SCALE))) / (H / 2) - LANDING_VERTICAL_CALIBRATION,
             # affects controller
             # self.bargeHeight includes height of helipad
             vel.x * (W / 2) / FPS,
@@ -336,7 +337,7 @@ class RocketLander(gym.Env):
             1.0 if self.legs[0].ground_contact else 0.0,
             1.0 if self.legs[1].ground_contact else 0.0
         ]
-
+        print(state)
         untransformed_state = [pos.x, pos.y, vel.x, vel.y, self.lander.angle, self.lander.angularVelocity]
 
         return state, untransformed_state
@@ -364,27 +365,6 @@ class RocketLander(gym.Env):
         return reward / 10
 
     """ PROBLEM SPECIFIC - RENDERING and OBJECT CREATION"""
-
-    # Problem specific - LINKED
-    def _create_terrain(self, chunks):
-        divisor_constant = 8  # Control the height of the sea
-        self.helipad_y = H / divisor_constant
-        self.bargeHeight = self.helipad_y
-
-        # Terrain
-        # height = self.np_random.uniform(0, H / 6, size=(CHUNKS + 1,))
-        height = np.random.normal(H / divisor_constant, 0.5, size=(chunks + 1,))
-        chunk_x = [W / (chunks - 1) * i for i in range(chunks)]
-        # self.helipad_x1 = chunk_x[CHUNKS // 2 - 1]
-        # self.helipad_x2 = chunk_x[CHUNKS // 2 + 1]
-        height[chunks // 2 - 2] = self.helipad_y
-        height[chunks // 2 - 1] = self.helipad_y
-        height[chunks // 2 + 0] = self.helipad_y
-        height[chunks // 2 + 1] = self.helipad_y
-        height[chunks // 2 + 2] = self.helipad_y
-
-        return [0.33 * (height[i - 1] + height[i + 0] + height[i + 1]) for i in range(chunks)], chunk_x  # smoothed Y
-
     def _create_rocket(self, initial_coordinates):
         self.initial_coordinates = initial_coordinates
 
@@ -680,9 +660,6 @@ class RocketLander(gym.Env):
         if np.random.rand() < epsilon:
             self.apply_disturbance('random', 0, -y_force)
 
-    def move_barge_randomly(self, epsilon, left_or_right, x_movement=0.05):
-        pass
-
     def apply_disturbance(self, force, *args):
         if force is not None:
             if isinstance(force, str):
@@ -727,56 +704,3 @@ def get_state_sample(samples, normal_state=True, untransformed_state=True):
 
 def flatten_array(the_list):
     return list(chain.from_iterable(the_list))
-
-
-def compute_derivatives(state, action, sample_time=1 / FPS):
-    simulation_settings = {'Side Engines': True,
-                           'Clouds': False,
-                           'Vectorized Nozzle': True,
-                           'Graph': False,
-                           'Render': False,
-                           'Starting Y-Pos Constant': 1,
-                           'Initial Force': (0, 0)}
-
-    eps = sample_time
-    len_state = len(state)
-    len_action = len(action)
-    ss = np.tile(state, (len_state, 1))
-    x1 = ss + np.eye(len_state) * eps
-    x2 = ss - np.eye(len_state) * eps
-    aa = np.tile(action, (len_state, 1))
-    f1 = simulate_kinematics(x1, aa, simulation_settings)
-    f2 = simulate_kinematics(x2, aa, simulation_settings)
-    delta_x = f1 - f2
-    delta_a = delta_x / 2 / eps  # Jacobian
-
-    x3 = np.tile(state, (len_action, 1))
-    u1 = np.tile(action, (len_action, 1)) + np.eye(len_action) * eps
-    u2 = np.tile(action, (len_action, 1)) - np.eye(len_action) * eps
-    f1 = simulate_kinematics(x3, u1, simulation_settings)
-    f2 = simulate_kinematics(x3, u2, simulation_settings)
-    delta__b = (f1 - f2) / 2 / eps
-    delta__b = delta__b.T
-
-    return delta_a, delta__b, delta_x
-
-
-def simulate_kinematics(state, action, simulation_settings, render=False):
-    next_state = np.zeros(state.shape)
-    envs = [None for _ in range(len(state))]  # separate environment for memory management
-    for i, (s, a) in enumerate(zip(state, action)):
-        x, y, x_dot, y_dot, theta, theta_dot = s
-        simulation_settings['Initial Coordinates'] = (x, y, 0, False)
-
-        envs[i] = RocketLander(simulation_settings)
-        if render:
-            envs[i].render()
-        envs[i].adjust_dynamics(y_dot=y_dot, x_dot=x_dot, theta=theta, theta_dot=theta_dot)
-
-        envs[i].step(a)
-        if render:
-            envs[i].render()
-        next_state[i, :] = envs[i].untransformed_state
-        envs[i].close()
-
-    return next_state

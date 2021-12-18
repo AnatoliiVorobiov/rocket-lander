@@ -45,7 +45,6 @@ if __name__ == "__main__":
 
             # When should the barge move? Water movement, dynamics etc can be simulated here.
             if s[LEFT_GROUND_CONTACT] == 0 and s[RIGHT_GROUND_CONTACT] == 0:
-                env.move_barge_randomly(epsilon, left_or_right_barge_movement)
                 # Random Force on rocket to simulate wind.
                 env.apply_random_x_disturbance(epsilon=0.005, left_or_right=left_or_right_barge_movement)
                 env.apply_random_y_disturbance(epsilon=0.005)

@@ -55,7 +55,6 @@ def train(env, agent, FLAGS):
             total_reward += reward
 
             if s[LEFT_GROUND_CONTACT] == 0 and s[RIGHT_GROUND_CONTACT] == 0:
-                env.move_barge_randomly(epsilon, left_or_right_barge_movement)
                 env.apply_random_x_disturbance(epsilon=0.005, left_or_right=left_or_right_barge_movement)
                 env.apply_random_y_disturbance(epsilon=0.005)
 
