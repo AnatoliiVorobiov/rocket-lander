@@ -359,9 +359,9 @@ class RocketLander(gym.Env):
     # ['dx','dy','x_vel','y_vel','theta','theta_dot','left_ground_contact','right_ground_contact']
     def __compute_rewards(self, state, main_engine_power, side_engine_power, part_angle):
         reward = 0
-        shaping = -200 * np.sqrt(np.square(state[0]) + np.square(state[1])) \
-                  - 100 * np.sqrt(np.square(state[2]) + np.square(state[3])) \
-                  - 1000 * abs(state[4]) - 30 * abs(state[5]) \
+        shaping = -2000 * np.sqrt(np.square(state[0]) + np.square(state[1])) \
+                  - 10 * np.sqrt(np.square(state[2]) + np.square(state[3])) \
+                  - 100 * abs(state[4]) - 30 * abs(state[5]) \
                   + 20 * state[6] + 20 * state[7]
 
         if state[3] > 0:
