@@ -13,7 +13,7 @@ MIN = [0, 0,  -3, -3, -1, -1, 0, 0]
 MAX = [2, 1.3, 3,  3,  1,  1, 1, 1]
 CHUNK_MULTIPLIER = list(N_CHUNKS[i] / (MAX[i] - MIN[i]) for i in range(S_SIZE))
 
-K = list(i/0.1 for i in range(-10, 50))
+K = list(i/10 for i in range(-5, 20))
 
 
 class QPIDAgent:
@@ -25,7 +25,7 @@ class QPIDAgent:
 
         self.pids = list(PIDController() for _ in range(N_CONTROLLERS))
 
-        self.prev_s = ()
+        self.prev_s_d = ()
         self.prev_k_indices = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0])
 
     # ==== Q tables ====
@@ -60,34 +60,49 @@ class QPIDAgent:
         """Get coefficients for PID controllers.
         From Q-learning point of view, it just returns actions (one per table)
         Note: it returns generator, not a list"""
-        s = self.discretize(s)
+        s_d = self.discretize(s)
         if eps > 0 and random.random() < eps:
             k_indices = np.random.randint(low=len(K), size=N_TABLES)
         else:
-            k_indices = self.tables[s].argmax(axis=1)
+            k_indices = self.tables[s_d].argmax(axis=1)
 
         coefficients = (K[i] for i in k_indices)
 
-        self.prev_s = s
+        self.prev_s_d = s_d
         self.prev_k_indices = k_indices
 
         return coefficients
 
     def update_tables(self, new_s, reward, lr, discount):
         """Compute new values for tables based on previous action"""
-        if len(self.prev_s) == 0:
+        if len(self.prev_s_d) == 0:
             print('Attempting to update tables without experience')
             return
 
-        new_s = self.discretize(new_s)
+        new_s_d = self.discretize(new_s)
 
-        prev_mask = np.zeros((N_TABLES, len(K)), dtype=bool)
-        for table_i in range(N_TABLES):
+        # update tables 1-3 and 4-6 based and reward from env
+        prev_mask = np.zeros(shape=(N_TABLES, len(K)), dtype=bool)
+        for table_i in range(N_TABLES-3):  # exclude last 3 tables
             prev_mask[table_i, self.prev_k_indices[table_i]] = True
 
-        prev_table_view = self.tables[self.prev_s]
+        prev_table_view = self.tables[self.prev_s_d]
 
-        tmp1 = discount * self.tables[new_s].max(axis=1)
+        tmp1 = discount * self.tables[new_s_d][:6].max(axis=1)
+        tmp2 = prev_table_view[prev_mask]
+        td = lr * (reward + tmp1 - tmp2)
+        prev_table_view[prev_mask] = prev_table_view[prev_mask] + td
+
+        # update tables 7-9 based on rocket angle
+        prev_mask = np.zeros(shape=(N_TABLES, len(K)), dtype=bool)
+        for table_i in range(6, N_TABLES):  # only last 3 tables
+            prev_mask[table_i, self.prev_k_indices[table_i]] = True
+        reward = -(100 * abs(new_s[4]) + abs(new_s[5]))  # reward for PID3 is based on rocket angle
+        print('new_s[4], new_s[5], nitro reward: ', new_s[4], new_s[5], reward)
+
+        prev_table_view = self.tables[self.prev_s_d]
+
+        tmp1 = discount * self.tables[new_s_d][6:].max(axis=1)
         tmp2 = prev_table_view[prev_mask]
         td = lr * (reward + tmp1 - tmp2)
         prev_table_view[prev_mask] = prev_table_view[prev_mask] + td

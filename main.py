@@ -20,12 +20,12 @@ if __name__ == "__main__":
     left_or_right_barge_movement = np.random.randint(0, 2)
     epsilon = 0.1
     total_reward = 0
-    episode_number = 100
+    episode_number = 1000
     lr = 0.01
     discount = 0.9
 
     for episode in range(episode_number):
-        if episode % 10 == 0:
+        if episode % 5 == 0:
             print('episode', episode)
         while 1:
             action = agent.get_actions(s, epsilon)
@@ -35,7 +35,7 @@ if __name__ == "__main__":
 
             agent.update_tables(s, r, lr, discount)
 
-            if episode % 10 == 0:
+            if episode % 5 == 0:
                 env.render('human')
                 env.refresh(render=False)
 
