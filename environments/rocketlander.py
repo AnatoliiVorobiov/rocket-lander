@@ -195,10 +195,19 @@ class RocketLander(gym.Env):
         # Decrease the rocket ass
         self._decrease_mass(m_power, s_power)
 
+        angel = self.lander.angle
+        if self.lander.angle > math.pi:
+            delta = self.lander.angle - math.pi
+            self.lander.angle = -math.pi + delta
+        if angel < -math.pi:
+            delta = -math.pi - self.lander.angle
+            self.lander.angle = math.pi - delta
+
         # State Vector
         self.previous_state = self.state  # Keep a record of the previous state
         state, self.untransformed_state = self.__generate_state()  # Generate state
         self.state = state  # Keep a record of the new state
+
 
         # Rewards for reinforcement learning
         reward = self.__compute_rewards(state, m_power, s_power, part.angle)  # part angle can be used as part of the reward
@@ -360,16 +369,9 @@ class RocketLander(gym.Env):
     # ['dx','dy','x_vel','y_vel','theta','theta_dot','left_ground_contact','right_ground_contact']
     def __compute_rewards(self, state, main_engine_power, side_engine_power, part_angle):
         reward = 0
-        angel = round(abs(state[4]), 2)
-        if round(angel, 2) > round(math.pi, 2):
-            angel = math.pi * 2 - angel
-        elif angel < -round(math.pi, 2):
-            angel = abs(-(math.pi * 2) - angel)
-
-        print(-100 * angel)
         shaping = -2000 * np.sqrt(np.square(state[0]) + np.square(state[1])) \
                   - 10 * np.sqrt(np.square(state[2]) + np.square(state[3])) \
-                  - 100 * angel - 30 * abs(state[5]) \
+                  - 100 * abs(state[4]) - 30 * abs(state[5]) \
                   + 20 * state[6] + 20 * state[7]
 
         if state[3] > 0:
