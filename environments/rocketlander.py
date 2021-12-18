@@ -360,16 +360,18 @@ class RocketLander(gym.Env):
     # ['dx','dy','x_vel','y_vel','theta','theta_dot','left_ground_contact','right_ground_contact']
     def __compute_rewards(self, state, main_engine_power, side_engine_power, part_angle):
         reward = 0
-        if round(abs(state[4]), 2) > round(math.pi, 2):
-            angel_shaping = (100 * (abs(state[4]) % math.pi))
-        else:
-            angel_shaping = (100 * (abs(state[4])))
-        #print(angel_shaping)
+        angel = round(abs(state[4]), 2)
+        if round(angel, 2) > round(math.pi, 2):
+            angel = math.pi * 2 - angel
+        elif angel < -round(math.pi, 2):
+            angel = abs(-(math.pi * 2) - angel)
 
+        print(-100 * angel)
         shaping = -2000 * np.sqrt(np.square(state[0]) + np.square(state[1])) \
                   - 10 * np.sqrt(np.square(state[2]) + np.square(state[3])) \
-                  - angel_shaping - 30 * abs(state[5]) \
+                  - 100 * angel - 30 * abs(state[5]) \
                   + 20 * state[6] + 20 * state[7]
+
         if state[3] > 0:
             shaping = shaping - 1
 
