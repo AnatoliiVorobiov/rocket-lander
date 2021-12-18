@@ -63,10 +63,8 @@ class QPIDAgent:
         s = self.discretize(s)
         if eps > 0 and random.random() < eps:
             k_indices = np.random.randint(low=len(K), size=N_TABLES)
-            print('rand', k_indices)
         else:
             k_indices = self.tables[s].argmax(axis=1)
-            print('greedy', k_indices)
 
         coefficients = (K[i] for i in k_indices)
 
@@ -90,9 +88,7 @@ class QPIDAgent:
         prev_table_view = self.tables[self.prev_s]
 
         tmp1 = discount * self.tables[new_s].max(axis=1)
-        print("tmp1 shape", tmp1.shape)
         tmp2 = prev_table_view[prev_mask]
-        print("tmp2 shape", tmp2.shape)
         td = lr * (reward + tmp1 - tmp2)
         prev_table_view[prev_mask] = prev_table_view[prev_mask] + td
 

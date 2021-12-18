@@ -20,11 +20,13 @@ if __name__ == "__main__":
     left_or_right_barge_movement = np.random.randint(0, 2)
     epsilon = 0.1
     total_reward = 0
-    episode_number = 5
+    episode_number = 100
     lr = 0.01
     discount = 0.9
 
     for episode in range(episode_number):
+        if episode % 10 == 0:
+            print('episode', episode)
         while 1:
             action = agent.get_actions(s, epsilon)
 
@@ -33,8 +35,9 @@ if __name__ == "__main__":
 
             agent.update_tables(s, r, lr, discount)
 
-            env.render('human')
-            env.refresh(render=False)
+            if episode % 10 == 0:
+                env.render('human')
+                env.refresh(render=False)
 
             if s[LEFT_GROUND_CONTACT] == 0 and s[RIGHT_GROUND_CONTACT] == 0:
                 # Random Force on rocket to simulate wind.
