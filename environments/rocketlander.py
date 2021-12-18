@@ -93,6 +93,7 @@ class RocketLander(gym.Env):
         self.action_space = [0, 0, 0]       # Main Engine, Nozzle Angle, Left/Right Engine
         self.untransformed_state = [0] * 6  # Non-normalized state
 
+        self.steps_limit = 10000
         self.init()
         self._reset()
     """ INHERITED """
@@ -110,6 +111,7 @@ class RocketLander(gym.Env):
         return returned_seed
 
     def _reset(self):
+        self.steps_limit = 10000
         self._destroy()
 
         self.game_over = False
@@ -214,7 +216,13 @@ class RocketLander(gym.Env):
             done = True
             reward = +10
             print('Lander.awake')
+        if self.steps_limit == 0:
+            done = True
+            reward = -10
+            print('Steps limit')
+            self.steps_limit = 10000
 
+        self.steps_limit -= 1
         self._update_particles()
 
         return np.array(state), reward, done, {}  # {} = info (required by parent class)

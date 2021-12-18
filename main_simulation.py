@@ -33,7 +33,7 @@ if __name__ == "__main__":
         while (1):
             a = pid.pid_algorithm(s) # pass the state to the algorithm, get the actions
             # Step through the simulation (1 step). Refer to Simulation Update in constants.py
-            s, r, done, info = env._step((a[0], a[1], 90))
+            s, r, done, info = env._step(a)
             total_reward += r   # Accumulate reward
             # -------------------------------------
             # Optional render
