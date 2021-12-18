@@ -98,7 +98,7 @@ class QPIDAgent:
         for table_i in range(6, N_TABLES):  # only last 3 tables
             prev_mask[table_i, self.prev_k_indices[table_i]] = True
         reward = -(100 * abs(new_s[4]) + abs(new_s[5]))  # reward for PID3 is based on rocket angle
-        print('new_s[4], new_s[5], nitro reward: ', new_s[4], new_s[5], reward)
+        #print('new_s[4], new_s[5], nitro reward: ', new_s[4], new_s[5], reward)
 
         prev_table_view = self.tables[self.prev_s_d]
 
