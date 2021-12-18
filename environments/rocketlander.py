@@ -34,24 +34,41 @@ class ContactDetector(contactListener):
             if self.env.legs[i] in [contact.fixtureA.body, contact.fixtureB.body]:
                 self.env.legs[i].ground_contact = False
 
+right_const_barge_coordinates = (2, 0.1, 35, 42)
+right_const_barge_coordinates_edges = [
+    (right_const_barge_coordinates[2], 0.1),
+    (right_const_barge_coordinates[3], 0.1),
+    (right_const_barge_coordinates[3], right_const_barge_coordinates[0]),
+    (right_const_barge_coordinates[2], right_const_barge_coordinates[0])
+]
+left_const_barge_coordinates = (2, 0.1, 1, 8)
+left_const_barge_coordinates_edges = [
+    (left_const_barge_coordinates[2], 0.1),
+    (left_const_barge_coordinates[3], 0.1),
+    (left_const_barge_coordinates[3], left_const_barge_coordinates[0]),
+    (left_const_barge_coordinates[2], left_const_barge_coordinates[0])
+]
+
+top_const_barge, bottom_const_barge, left_const_barge, right_const_barge = right_const_barge_coordinates
+rocket_x, rocket_y = (right_const_barge + left_const_barge) / 2, top_const_barge + 1
+rocket_initial_coordinates = (rocket_x, rocket_y)
+
 class RocketLander(gym.Env):
-    """
-    Continuous VTOL of a rocket.
-    """
     metadata = {
         'render.modes': ['human', 'rgb_array'],
         'video.frames_per_second': FPS
     }
 
-    def __init__(self, settings, dtype=np.float32):
+    def __init__(self, settings):
         self._seed()
-        self.viewer = None
+        self.viewer = rendering.Viewer(VIEWPORT_W, VIEWPORT_H)
+        self.viewer.set_bounds(0, W, 0, H)
+
         self.world = Box2D.b2World()
         self.main_base = None
-        self.barge_base = None
         self.CONTACT_FLAG = False
 
-        self.landing_coordinates = []
+        self.landing_coordinates = (4.5, 2)
 
         self.lander = None
         self.particles = []
@@ -75,8 +92,19 @@ class RocketLander(gym.Env):
         self.action_space = [0, 0, 0]       # Main Engine, Nozzle Angle, Left/Right Engine
         self.untransformed_state = [0] * 6  # Non-normalized state
 
+        self.init()
         self._reset()
     """ INHERITED """
+
+    def init(self):
+        # --- BARGE ---
+        assert BARGE_LENGTH_X1_RATIO < BARGE_LENGTH_X2_RATIO, 'Barge Length X1 must be 0-1 and smaller than X2'
+
+        self.landing_barge_coordinates = left_const_barge_coordinates_edges
+        self.initial_barge_coordinates = left_const_barge_coordinates_edges
+
+        self._create_base_static_edges()
+        # --- END BARGE ---
 
     def _seed(self, seed=None):
         self.np_random, returned_seed = seeding.np_random(seed)
@@ -84,6 +112,7 @@ class RocketLander(gym.Env):
 
     def _reset(self):
         self._destroy()
+
         self.game_over = False
         self.world.contactListener_keepref = ContactDetector(self)
         self.world.contactListener = self.world.contactListener_keepref
@@ -104,27 +133,10 @@ class RocketLander(gym.Env):
         self.y_pos_speed = [-1.9, -1.8, -1.64, -1.5, -1.5, -1.3, -1.0, -0.9]
         self.y_pos_flags = [False for _ in self.y_pos_ref]
 
-        # --- BARGE ---
-        initial_barge_coordinates = (2, 0.1, 1, 8)
-        barge_y_top, barge_y_bottom, barge_x_left, barge_x_right = initial_barge_coordinates
-
-        assert BARGE_LENGTH_X1_RATIO < BARGE_LENGTH_X2_RATIO, 'Barge Length X1 must be 0-1 and smaller than X2'
-
-        top, bottom, left, right = initial_barge_coordinates
-        self.landing_barge_coordinates = [(left, 0.1), (right, 0.1), (right, top), (left, top)]
-        self.initial_barge_coordinates = self.landing_barge_coordinates
-
-        initial_const_barge_coordinates = (2, 0.1, 35, 42)
-        top_const_barge, bottom_const_barge, left_const_barge, right_const_barge = initial_const_barge_coordinates
-        self._create_base_static_edges()
-        # --- END BARGE ---
-
         # --- ROCKET ---
-        rocket_x, rocket_y = (right_const_barge + left_const_barge) / 2, top_const_barge + 1
-        self._create_rocket((rocket_x, rocket_y))
+        self._create_rocket(rocket_initial_coordinates)
         # --- END ROCKET ---
 
-        self.landing_coordinates = (5, 5)
         return self._step(np.array([0, 0, 0]))[0] # Step through one action = [0, 0, 0] and return the state, reward etc.
 
     def _destroy(self):
@@ -133,10 +145,11 @@ class RocketLander(gym.Env):
         self._clean_particles(True)
         self.world.DestroyBody(self.main_base)
         self.main_base = None
-        self.world.DestroyBody(self.lander)
-        self.lander = None
-        self.world.DestroyBody(self.legs[0])
-        self.world.DestroyBody(self.legs[1])
+        print('here', self.lander)
+        if self.lander:
+            self.world.DestroyBody(self.lander)
+            self.world.DestroyBody(self.legs[0])
+            self.world.DestroyBody(self.legs[1])
 
     def _step(self, action):
         assert len(action) == 3  # Fe, Fs, psi
@@ -479,14 +492,15 @@ class RocketLander(gym.Env):
     def _create_base_static_edges(self):
         # Main Base
         self.main_base = self.world.CreateStaticBody(shapes=edgeShape(vertices=[(0, 0), (W, 0)]))
-        if self.barge_base is not None:
-            self.world.DestroyBody(self.barge_base)
 
-        self.barge_base = None
-        barge_edge_coordinates = [self.landing_barge_coordinates[2], self.landing_barge_coordinates[3]]
-        self.barge_base = self.world.CreateStaticBody(shapes=edgeShape(vertices=barge_edge_coordinates))
-        self.barge_base = self.world.CreateStaticBody(shapes=edgeShape(vertices=barge_edge_coordinates))
-        self._create_static_edge(self.barge_base, barge_edge_coordinates, friction=BARGE_FRICTION)
+        left_barge_edge_coordinates = [left_const_barge_coordinates_edges[2], left_const_barge_coordinates_edges[3]]
+
+        barge_base = self.world.CreateStaticBody(shapes=edgeShape(vertices=left_barge_edge_coordinates))
+        self._create_static_edge(barge_base, left_barge_edge_coordinates, friction=BARGE_FRICTION)
+
+        right_barge_edge_coordinates = ([right_const_barge_coordinates_edges[2], right_const_barge_coordinates_edges[3]])
+        barge_base = self.world.CreateStaticBody(shapes=edgeShape(vertices=right_barge_edge_coordinates))
+        self._create_static_edge(barge_base, right_barge_edge_coordinates, friction=BARGE_FRICTION)
 
     @staticmethod
     def _create_static_edge(base, vertices, friction):
@@ -548,25 +562,10 @@ class RocketLander(gym.Env):
     """ RENDERING """
 
     def _render(self, mode='rgb_array'):
-
-        # This can be removed since the code is being update to utilize env.refresh() instead
-        # Kept here for backwards compatibility purposes
-        # Viewer Creation
-        if self.viewer is None:  # Initial run will enter here
-            self.viewer = rendering.Viewer(VIEWPORT_W, VIEWPORT_H)
-            self.viewer.set_bounds(0, W, 0, H)
-
-        initial_const_barge_coordinates = (2, 0.1, 35, 42)
-        top, bottom, left, right = initial_const_barge_coordinates
-        const_barge = [(left, 0.1), (right, 0.1), (right, top), (left, top)]
-
-        barges = [const_barge, self.landing_barge_coordinates]
-        self._render_environment(barges)
+        self._render_environment([left_const_barge_coordinates_edges, right_const_barge_coordinates_edges])
         self._render_lander()
         self.draw_marker(x=self.lander.worldCenter.x, y=self.lander.worldCenter.y)  # Center of Gravity
-        destination_x = (self.landing_barge_coordinates[0][0] + self.landing_barge_coordinates[1][0]) / 2
-        destination_y = (self.landing_barge_coordinates[0][0] + self.landing_barge_coordinates[1][0]) / 2
-        self.draw_marker(x=destination_x, y=2)              # пщфд
+        self.draw_marker(x=self.landing_coordinates[0], y=self.landing_coordinates[1])
 
         #return self.viewer.render(return_rgb_array=mode == 'rgb_array')
 
