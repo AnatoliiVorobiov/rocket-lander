@@ -92,7 +92,7 @@ GRAVITY = 9.81
 
 # ---------------------------------
 """State Reset Limits"""
-THETA_LIMIT = 35*DEGTORAD
+THETA_LIMIT = 90*DEGTORAD
 
 # ---------------------------------
 """State Definition"""
