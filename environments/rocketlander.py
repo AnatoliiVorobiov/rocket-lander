@@ -202,18 +202,18 @@ class RocketLander(gym.Env):
         state_reset_conditions = [
             self.game_over,  # Evaluated depending on body contact
             abs(state[XX]) >= 2.0,  # Rocket moves out of x-space
-            state[YY] < 0 or state[YY] > 1.3,  # Rocket moves out of y-space or below barge
-            abs(state[THETA]) > THETA_LIMIT # Rocket tilts greater than the "controllable" limit
+            state[YY] < 0 or state[YY] > 3,  # Rocket moves out of y-space or below barge
+            #abs(state[THETA]) > THETA_LIMIT # Rocket tilts greater than the "controllable" limit
         ]
         done = False
         if any(state_reset_conditions):
-            print(state_reset_conditions)
-            print(state[YY], state[THETA])
             done = True
             reward = -10
+            print('Conditions', state_reset_conditions, state[YY], state[XX])
         if not self.lander.awake:
             done = True
             reward = +10
+            print('Lander.awake')
 
         self._update_particles()
 
@@ -337,7 +337,7 @@ class RocketLander(gym.Env):
             1.0 if self.legs[0].ground_contact else 0.0,
             1.0 if self.legs[1].ground_contact else 0.0
         ]
-        print(state)
+        #print(state)
         untransformed_state = [pos.x, pos.y, vel.x, vel.y, self.lander.angle, self.lander.angularVelocity]
 
         return state, untransformed_state
