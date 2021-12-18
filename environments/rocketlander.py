@@ -207,7 +207,7 @@ class RocketLander(gym.Env):
         state_reset_conditions = [
             self.game_over,  # Evaluated depending on body contact
             abs(state[XX]) >= 2.0,  # Rocket moves out of x-space
-            state[YY] < 0 or state[YY] > 3,  # Rocket moves out of y-space or below barge
+            state[YY] < -1 or state[YY] > 3,  # Rocket moves out of y-space or below barge
             #abs(state[THETA]) > THETA_LIMIT # Rocket tilts greater than the "controllable" limit
         ]
         done = False
@@ -393,7 +393,7 @@ class RocketLander(gym.Env):
                 density=5.0,
                 friction=0.1,
                 categoryBits=0x0010,
-                maskBits=0x001,  # collide only with ground
+                maskBits=0x001,   # collide only with ground
                 restitution=0.0)  # 0.99 bouncy
         )
         self.lander.color1 = body_color
