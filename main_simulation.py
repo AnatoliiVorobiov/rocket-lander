@@ -3,10 +3,11 @@ Author: Reuben Ferrante
 Date:   16/08/2017
 Description: This is the  main running point of the simulation. Set settings, algorithm, episodes,...
 """
-import sys, math
 from environments.rocketlander import RocketLander
 from constants import LEFT_GROUND_CONTACT, RIGHT_GROUND_CONTACT
 import numpy as np
+from agents import agents_abstract
+
 
 if __name__ == "__main__":
     # Settings holds all the settings for the rocket lander environment.
@@ -19,10 +20,10 @@ if __name__ == "__main__":
     env = RocketLander(settings)
     s = env._reset()
 
-    from control_and_ai.pid import PID_Benchmark
-
-    # Initialize the PID algorithm
-    pid = PID_Benchmark()
+    # Initialize agent
+    # agent = agents_abstract.PIDAgent()
+    # agent = agents_abstract.QAgent(s, True, load='./agents/q_trained.p')
+    agent = agents_abstract.QAgent(s, False, load='./agents/q_hd_trained.p')
 
     left_or_right_barge_movement = np.random.randint(0, 2)
     epsilon = 0.05
@@ -31,7 +32,7 @@ if __name__ == "__main__":
 
     for episode in range(episode_number):
         while (1):
-            a = pid.pid_algorithm(s) # pass the state to the algorithm, get the actions
+            a = agent.act(env, s)  # pass the state to the algorithm, get the actions
             # Step through the simulation (1 step). Refer to Simulation Update in constants.py
             s, r, done, info = env._step(a)
             total_reward += r   # Accumulate reward

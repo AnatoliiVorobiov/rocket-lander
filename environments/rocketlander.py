@@ -127,6 +127,9 @@ class RocketLander(gym.Env):
         self.landing_coordinates = (5, 5)
         return self._step(np.array([0, 0, 0]))[0] # Step through one action = [0, 0, 0] and return the state, reward etc.
 
+    def reset(self):
+        return self._reset()
+
     def _destroy(self):
         if not self.main_base: return
         self.world.contactListener = None
@@ -166,8 +169,8 @@ class RocketLander(gym.Env):
         # nozzle or the bottom of the first stage rocket
 
         # Main Force Calculations
-        if self.remaining_fuel == 0:
-            logging.info("Strictly speaking, you're out of fuel, but act anyway.")
+        # if self.remaining_fuel == 0:
+        #     logging.info("Strictly speaking, you're out of fuel, but act anyway.")
         m_power = self.__main_engines_force_computation(action, rocketPart=part)
         s_power, engine_dir = self.__side_engines_force_computation(action)
 
@@ -203,6 +206,9 @@ class RocketLander(gym.Env):
         self._update_particles()
 
         return np.array(state), reward, done, {}  # {} = info (required by parent class)
+
+    def step(self, action):
+        return self._step(action)
 
     """ PROBLEM SPECIFIC - PHYSICS, STATES, REWARDS"""
 
@@ -570,6 +576,9 @@ class RocketLander(gym.Env):
 
         #return self.viewer.render(return_rgb_array=mode == 'rgb_array')
 
+    def render(self, mode='rgb_array'):
+        return self._render(mode)
+
     def refresh(self, mode='human', render=False):
         """
         Used instead of _render in order to draw user defined drawings from controllers, e.g. trajectories
@@ -584,7 +593,7 @@ class RocketLander(gym.Env):
             self.viewer.set_bounds(0, W, 0, H)
 
         if render:
-            self.render()
+            self.render('human')
         return self.viewer.render(return_rgb_array=mode == 'rgb_array')
 
     def _render_lander(self):
