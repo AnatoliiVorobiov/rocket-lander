@@ -45,7 +45,7 @@ class QPIDAgent:
     @staticmethod
     def new_tables():
         # (number of tables, number of chunks for s[0], ..., number of chunks for s[7], number of possible coefficients)
-        tables = np.zeros([N_TABLES] + N_CHUNKS + [len(K)])
+        tables = np.zeros(N_CHUNKS + [N_TABLES, len(K)])
         return tables
 
     def save_tables(self, save_path):
@@ -64,7 +64,7 @@ class QPIDAgent:
             k_indices = np.random.randint(low=len(K), size=N_TABLES)
             print('rand', k_indices)
         else:
-            sl = (slice(0, N_TABLES),) + s
+            sl = s + (slice(0, N_TABLES),)
             k_indices = self.tables[sl].argmax(axis=1)
             print('greedy', k_indices)
 
@@ -87,9 +87,9 @@ class QPIDAgent:
 
         prev_mask = np.zeros(self.tables.shape, dtype=bool)
         for table_i in range(N_TABLES):
-            prev_mask[(table_i,) + self.prev_s + (self.prev_k_indices[table_i],)] = True
+            prev_mask[self.prev_s + (table_i, self.prev_k_indices[table_i],)] = True
 
-        sl = (slice(0, N_TABLES),) + new_s
+        sl = new_s + (slice(0, N_TABLES),)
 
         tmp1 = discount * self.tables[sl].max(axis=1)
         tmp2 = self.tables[prev_mask]

@@ -31,7 +31,7 @@ if __name__ == "__main__":
             s, r, done, info = env.step(action)
             total_reward += r
 
-            agent.update_tables(s, r, lr, discount)
+            agent.update_tables(s, r, lr, discount)  # it's very slow right now
 
             env.render('human')
             env.refresh(render=False)
