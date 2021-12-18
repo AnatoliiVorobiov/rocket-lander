@@ -31,12 +31,11 @@ if __name__ == "__main__":
             s, r, done, info = env.step(action)
             total_reward += r
 
-            agent.update_tables(s, r, lr, discount)  # it's very slow right now
+            agent.update_tables(s, r, lr, discount)
 
             env.render('human')
             env.refresh(render=False)
 
-            # When should the barge move? Water movement, dynamics etc can be simulated here.
             if s[LEFT_GROUND_CONTACT] == 0 and s[RIGHT_GROUND_CONTACT] == 0:
                 # Random Force on rocket to simulate wind.
                 env.apply_random_x_disturbance(epsilon=0.005, left_or_right=left_or_right_barge_movement)

@@ -44,7 +44,7 @@ class QPIDAgent:
 
     @staticmethod
     def new_tables():
-        # (number of tables, number of chunks for s[0], ..., number of chunks for s[7], number of possible coefficients)
+        # (number of chunks for s[0], ..., number of chunks for s[7], number of tables, number of possible coefficients)
         tables = np.zeros(N_CHUNKS + [N_TABLES, len(K)])
         return tables
 
@@ -58,19 +58,17 @@ class QPIDAgent:
 
     def get_coefficients(self, s, eps):
         """Get coefficients for PID controllers.
-        From Q-learning point of view, it just returns actions (one per table)"""
+        From Q-learning point of view, it just returns actions (one per table)
+        Note: it returns generator, not a list"""
         s = self.discretize(s)
         if eps > 0 and random.random() < eps:
             k_indices = np.random.randint(low=len(K), size=N_TABLES)
             print('rand', k_indices)
         else:
-            sl = s + (slice(0, N_TABLES),)
-            k_indices = self.tables[sl].argmax(axis=1)
+            k_indices = self.tables[s].argmax(axis=1)
             print('greedy', k_indices)
 
-        coefficients = []
-        for i in k_indices:
-            coefficients.append(K[i])
+        coefficients = (K[i] for i in k_indices)
 
         self.prev_s = s
         self.prev_k_indices = k_indices
@@ -85,16 +83,18 @@ class QPIDAgent:
 
         new_s = self.discretize(new_s)
 
-        prev_mask = np.zeros(self.tables.shape, dtype=bool)
+        prev_mask = np.zeros((N_TABLES, len(K)), dtype=bool)
         for table_i in range(N_TABLES):
-            prev_mask[self.prev_s + (table_i, self.prev_k_indices[table_i],)] = True
+            prev_mask[table_i, self.prev_k_indices[table_i]] = True
 
-        sl = new_s + (slice(0, N_TABLES),)
+        prev_table_view = self.tables[self.prev_s]
 
-        tmp1 = discount * self.tables[sl].max(axis=1)
-        tmp2 = self.tables[prev_mask]
+        tmp1 = discount * self.tables[new_s].max(axis=1)
+        print("tmp1 shape", tmp1.shape)
+        tmp2 = prev_table_view[prev_mask]
+        print("tmp2 shape", tmp2.shape)
         td = lr * (reward + tmp1 - tmp2)
-        self.tables[prev_mask] = self.tables[prev_mask] + td
+        prev_table_view[prev_mask] = prev_table_view[prev_mask] + td
 
     # ==== PID + Q tables ====
     def get_actions(self, s, eps):
