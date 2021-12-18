@@ -183,11 +183,18 @@ class RocketLander(gym.Env):
         # "part" is used to decide where the main engine force is applied (whether it is applied to the bottom of the
         # nozzle or the bottom of the first stage rocket
 
+
+        if self.lander.angle > math.pi:
+            self.lander.angle -= math.pi * 2
+        if self.lander.angle < -math.pi:
+            self.lander.angle += math.pi * 2
+
         # Main Force Calculations
         # if self.remaining_fuel == 0:
         #     logging.info("Strictly speaking, you're out of fuel, but act anyway.")
         m_power = self.__main_engines_force_computation(action, rocketPart=part)
         s_power, engine_dir = self.__side_engines_force_computation(action)
+
 
         if self.settings.get('Gather Stats'):
             self.action_history.append([m_power, s_power * engine_dir, part.angle])
@@ -195,19 +202,10 @@ class RocketLander(gym.Env):
         # Decrease the rocket ass
         self._decrease_mass(m_power, s_power)
 
-        angel = self.lander.angle
-        if self.lander.angle > math.pi:
-            delta = self.lander.angle - math.pi
-            self.lander.angle = -math.pi + delta
-        if angel < -math.pi:
-            delta = -math.pi - self.lander.angle
-            self.lander.angle = math.pi - delta
-
         # State Vector
         self.previous_state = self.state  # Keep a record of the previous state
         state, self.untransformed_state = self.__generate_state()  # Generate state
         self.state = state  # Keep a record of the new state
-
 
         # Rewards for reinforcement learning
         reward = self.__compute_rewards(state, m_power, s_power, part.angle)  # part angle can be used as part of the reward
