@@ -31,10 +31,10 @@ if __name__ == "__main__":
             env.render('human')
             env.refresh(render=False)
 
-            if s[LEFT_GROUND_CONTACT] == 0 and s[RIGHT_GROUND_CONTACT] == 0:
-                # Random Force on rocket to simulate wind.
-                env.apply_random_x_disturbance(epsilon=0.005, left_or_right=left_or_right_barge_movement)
-                env.apply_random_y_disturbance(epsilon=0.005)
+            # if s[LEFT_GROUND_CONTACT] == 0 and s[RIGHT_GROUND_CONTACT] == 0:
+            #     # Random Force on rocket to simulate wind.
+            #     env.apply_random_x_disturbance(epsilon=0.005, left_or_right=left_or_right_barge_movement)
+            #     env.apply_random_y_disturbance(epsilon=0.005)
 
             # Touch down or pass abs(THETA_LIMIT)
             if done:

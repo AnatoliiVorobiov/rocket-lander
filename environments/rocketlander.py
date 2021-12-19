@@ -25,6 +25,7 @@ class ContactDetector(contactListener):
         self.env = env
 
     def begin_contact(self, contact):
+        print('contact')
         if self.env.lander == contact.fixtureA.body or self.env.lander == contact.fixtureB.body:
             self.env.game_over = True
         for i in range(2):
@@ -69,6 +70,7 @@ class RocketLander(gym.Env):
         self.viewer.set_bounds(0, W, 0, H)
 
         self.world = Box2D.b2World()
+
         self.main_base = None
         self.CONTACT_FLAG = False
 
@@ -129,12 +131,6 @@ class RocketLander(gym.Env):
         # Engine Stats
         self.action_history = []
 
-        # gradient of 0.009
-        # Reference y-trajectory
-        self.y_pos_ref = [1, 0.8, 0.6, 0.4, 0.3, 0.2, 0.15, 0.1]
-        self.y_pos_speed = [-1.9, -1.8, -1.64, -1.5, -1.5, -1.3, -1.0, -0.9]
-        self.y_pos_flags = [False for _ in self.y_pos_ref]
-
         # --- ROCKET ---
         self._create_rocket(rocket_initial_coordinates)
         # --- END ROCKET ---
@@ -163,6 +159,8 @@ class RocketLander(gym.Env):
         if (self.legs[0].ground_contact or self.legs[1].ground_contact) and self.CONTACT_FLAG == False:
             self.CONTACT_FLAG = True
 
+        # self.lander.angle = 0
+        # self.lander.position = (3, 2.9)
         # Shutdown all Engines upon contact with the ground
         if self.CONTACT_FLAG:
             action = [0, 0, 0]
@@ -179,10 +177,6 @@ class RocketLander(gym.Env):
             # A transformation can be done on the action, such as clipping the value
         else:
             part = self.lander
-
-        # "part" is used to decide where the main engine force is applied (whether it is applied to the bottom of the
-        # nozzle or the bottom of the first stage rocket
-
 
         if self.lander.angle > math.pi:
             self.lander.angle -= math.pi * 2
@@ -259,11 +253,10 @@ class RocketLander(gym.Env):
             angle_is_normal = self.lander.angle <= (math.pi / 2) and self.lander.angle > (-math.pi / 2)
             if (action[0] > 0.0 and angle_is_normal):
                 # Limits
-                m_power = (np.clip(action[0], 0.0, 1.0) + 1.0) * 0.3  # 0.5..1.0
+                m_power = (np.clip(action[0], 0.0, 1.0) + 1.0) * 0.3  # 0.3..1.6
                 assert m_power >= 0.3 and m_power <= 1.0
                 # ------------------------------------------------------------------------
-                ox = sin * (4 / SCALE + 2 * dispersion[0]) - cos * dispersion[
-                    1]  # 4 is move a bit downwards, +-2 for randomness
+                ox = sin * (4 / SCALE + 2 * dispersion[0]) - cos * dispersion[1]  # 4 is move a bit downwards, +-2 for randomness
                 oy = -cos * (4 / SCALE + 2 * dispersion[0]) - sin * dispersion[1]
                 impulse_pos = (rocketPart.position[0] + ox, rocketPart.position[1] + oy)
 
@@ -370,7 +363,7 @@ class RocketLander(gym.Env):
         reward = 0
         shaping = -2000 * np.sqrt(np.square(state[0]) + np.square(state[1])) \
                   - 10 * np.sqrt(np.square(state[2]) + np.square(state[3])) \
-                  - 100 * abs(state[4]) - 30 * abs(state[5]) \
+                  - 1000 * abs(state[4]) - 30 * abs(state[5]) \
                   + 20 * state[6] + 20 * state[7]
 
         if state[3] > 0:
