@@ -1,6 +1,3 @@
-import math
-
-
 class PIDHelper:
     def __init__(self, Kp, Ki, Kd):
         self.Kp = Kp
@@ -33,11 +30,15 @@ class PIDTuned:
     def pid_algorithm(self, s):
         dx, dy, vel_x, vel_y, theta, omega, legContact_left, legContact_right = s
 
-        distance_error = math.sqrt(dx*dx+dy*dy)
-
-        Fe = self.Fe_PID.compute_output(distance_error*0.12)
+        if dx > 0.3:
+            dx_tmp = 0.3
+        elif dx < -0.3:
+            dx_tmp = -0.3
+        else:
+            dx_tmp = dx
+        Fe = self.Fe_PID.compute_output(abs(dx_tmp)*0.4 - dy*0.2)
         Fs = self.Fs_theta_PID.compute_output(theta*5)
-        psi = self.psi_PID.compute_output(theta + distance_error/10)
+        psi = self.psi_PID.compute_output(theta + dx/5)
 
         if legContact_left and legContact_right:  # legs have contact
             Fe = 0
