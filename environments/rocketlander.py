@@ -29,7 +29,8 @@ class ContactDetector(contactListener):
             game_over = True
             for leg in self.env.legs:
                 game_over = game_over and leg.ground_contact
-            self.env.game_over = game_over and self.env.lander.linearVelocity.x > -0.5 and self.env.lander.linearVelocity.y > -0.5
+            self.env.game_over = game_over and abs(self.env.lander.linearVelocity.x) < 1 and abs(self.env.lander.linearVelocity.y) < 1
+            print(game_over, abs(self.env.lander.linearVelocity.x) < 1, abs(self.env.lander.linearVelocity.y) < 1)
 
     def EndContact(self, contact):
         if self.env.left_barge == contact.fixtureA.body or self.env.left_barge == contact.fixtureB.body:
@@ -152,8 +153,8 @@ class RocketLander(gym.Env):
         assert len(action) == 3  # Fe, Fs, psi
 
         # Check for contact with the ground
-        if (self.legs[0].ground_contact or self.legs[1].ground_contact) and self.CONTACT_FLAG == False:
-            self.CONTACT_FLAG = True
+        #if (self.legs[0].ground_contact and self.legs[1].ground_contact) and self.CONTACT_FLAG == False:
+        #    self.CONTACT_FLAG = True
 
         # self.lander.angle = 0
         # self.lander.position = (3, 2.9)
@@ -202,7 +203,6 @@ class RocketLander(gym.Env):
 
         # Check if the game is done, adjust reward based on the final state of the body
         state_reset_conditions = [
-            self.game_over,  # Evaluated depending on body contact
             abs(state[XX]) >= 2.0,  # Rocket moves out of x-space
             state[YY] < -1 or state[YY] > 3,  # Rocket moves out of y-space or below barge
             # abs(state[THETA]) > THETA_LIMIT # Rocket tilts greater than the "controllable" limit
@@ -212,7 +212,7 @@ class RocketLander(gym.Env):
             done = True
             reward = -10
             print('Conditions', state_reset_conditions, state[YY], state[XX])
-        if not self.lander.awake:
+        if not self.lander.awake or self.game_over:
             done = True
             reward = +10
             print('Lander.awake')
@@ -350,7 +350,6 @@ class RocketLander(gym.Env):
             1.0 if self.legs[0].ground_contact else 0.0,
             1.0 if self.legs[1].ground_contact else 0.0
         ]
-        print(vel, self.lander.angularVelocity)
         untransformed_state = [pos.x, pos.y, vel.x, vel.y, self.lander.angle, self.lander.angularVelocity]
 
         return state, untransformed_state
