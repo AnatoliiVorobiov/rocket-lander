@@ -30,7 +30,6 @@ class ContactDetector(contactListener):
             for leg in self.env.legs:
                 game_over = game_over and leg.ground_contact
             self.env.game_over = game_over and abs(self.env.lander.linearVelocity.x) < 1 and abs(self.env.lander.linearVelocity.y) < 1
-            print(game_over, abs(self.env.lander.linearVelocity.x) < 1, abs(self.env.lander.linearVelocity.y) < 1)
 
     def EndContact(self, contact):
         if self.env.left_barge == contact.fixtureA.body or self.env.left_barge == contact.fixtureB.body:
