@@ -12,30 +12,31 @@ from itertools import chain
 from constants import *
 import numpy as np
 
-
 # This contact detector is equivalent the one implemented in Lunar Lander
 from constants import BARGE_LENGTH_X1_RATIO, BARGE_LENGTH_X2_RATIO
 
+
 class ContactDetector(contactListener):
-    """
-    Creates a contact listener to check when the rocket touches down.
-    """
     def __init__(self, env):
         contactListener.__init__(self)
         self.env = env
 
-    def begin_contact(self, contact):
-        print('contact')
-        if self.env.lander == contact.fixtureA.body or self.env.lander == contact.fixtureB.body:
-            self.env.game_over = True
-        for i in range(2):
-            if self.env.legs[i] in [contact.fixtureA.body, contact.fixtureB.body]:
-                self.env.legs[i].ground_contact = True
+    def BeginContact(self, contact):
+        if self.env.left_barge == contact.fixtureA.body or self.env.left_barge == contact.fixtureB.body:
+            for i in range(2):
+                if self.env.legs[i] in [contact.fixtureA.body, contact.fixtureB.body]:
+                    self.env.legs[i].ground_contact = True
+            game_over = True
+            for leg in self.env.legs:
+                game_over = game_over and leg.ground_contact
+            self.env.game_over = game_over and self.env.lander.linearVelocity.x > -0.5 and self.env.lander.linearVelocity.y > -0.5
 
-    def end_contact(self, contact):
-        for i in range(2):
-            if self.env.legs[i] in [contact.fixtureA.body, contact.fixtureB.body]:
-                self.env.legs[i].ground_contact = False
+    def EndContact(self, contact):
+        if self.env.left_barge == contact.fixtureA.body or self.env.left_barge == contact.fixtureB.body:
+            for i in range(2):
+                if self.env.legs[i] in [contact.fixtureA.body, contact.fixtureB.body]:
+                    self.env.legs[i].ground_contact = False
+
 
 right_const_barge_coordinates = (2, 0.1, 35, 42)
 right_const_barge_coordinates_edges = [
@@ -58,6 +59,7 @@ rocket_initial_coordinates = (rocket_x, rocket_y)
 
 targetX = (left_const_barge_coordinates[3] + left_const_barge_coordinates[2]) / 2
 
+
 class RocketLander(gym.Env):
     metadata = {
         'render.modes': ['human', 'rgb_array'],
@@ -68,7 +70,6 @@ class RocketLander(gym.Env):
         self._seed()
         self.viewer = rendering.Viewer(VIEWPORT_W, VIEWPORT_H)
         self.viewer.set_bounds(0, W, 0, H)
-
         self.world = Box2D.b2World()
 
         self.main_base = None
@@ -92,22 +93,17 @@ class RocketLander(gym.Env):
 
         self.impulsePos = (0, 0)
 
-        self.action_space = [0, 0, 0]       # Main Engine, Nozzle Angle, Left/Right Engine
+        self.action_space = [0, 0, 0]  # Main Engine, Nozzle Angle, Left/Right Engine
         self.untransformed_state = [0] * 6  # Non-normalized state
 
         self.steps_limit = 10000
-        self.init()
-        self._reset()
-    """ INHERITED """
-
-    def init(self):
-        # --- BARGE ---
         assert BARGE_LENGTH_X1_RATIO < BARGE_LENGTH_X2_RATIO, 'Barge Length X1 must be 0-1 and smaller than X2'
 
         self.landing_barge_coordinates = left_const_barge_coordinates_edges
-        self._create_base_static_edges()
-        # --- END BARGE ---
+        self._create_barges()
+        self._reset()
 
+    """ INHERITED """
     def _seed(self, seed=None):
         self.np_random, returned_seed = seeding.np_random(seed)
         return returned_seed
@@ -117,8 +113,9 @@ class RocketLander(gym.Env):
         self._destroy()
 
         self.game_over = False
-        self.world.contactListener_keepref = ContactDetector(self)
-        self.world.contactListener = self.world.contactListener_keepref
+
+        self.world.contactListener_bug_workaround = ContactDetector(self)
+        self.world.contactListener = self.world.contactListener_bug_workaround
 
         self.helipad_y = left_const_barge_coordinates[0]
         self.bargeHeight = left_const_barge_coordinates[0]
@@ -135,7 +132,8 @@ class RocketLander(gym.Env):
         self._create_rocket(rocket_initial_coordinates)
         # --- END ROCKET ---
 
-        return self._step(np.array([0, 0, 0]))[0] # Step through one action = [0, 0, 0] and return the state, reward etc.
+        return self._step(np.array([0, 0, 0]))[
+            0]  # Step through one action = [0, 0, 0] and return the state, reward etc.
 
     def reset(self):
         return self._reset()
@@ -144,9 +142,7 @@ class RocketLander(gym.Env):
         if not self.main_base: return
         self.world.contactListener = None
         self._clean_particles(True)
-        self.world.DestroyBody(self.main_base)
         self.main_base = None
-        print('here', self.lander)
         if self.lander:
             self.world.DestroyBody(self.lander)
             self.world.DestroyBody(self.legs[0])
@@ -189,7 +185,6 @@ class RocketLander(gym.Env):
         m_power = self.__main_engines_force_computation(action, rocketPart=part)
         s_power, engine_dir = self.__side_engines_force_computation(action)
 
-
         if self.settings.get('Gather Stats'):
             self.action_history.append([m_power, s_power * engine_dir, part.angle])
 
@@ -202,14 +197,15 @@ class RocketLander(gym.Env):
         self.state = state  # Keep a record of the new state
 
         # Rewards for reinforcement learning
-        reward = self.__compute_rewards(state, m_power, s_power, part.angle)  # part angle can be used as part of the reward
+        reward = self.__compute_rewards(state, m_power, s_power,
+                                        part.angle)  # part angle can be used as part of the reward
 
         # Check if the game is done, adjust reward based on the final state of the body
         state_reset_conditions = [
             self.game_over,  # Evaluated depending on body contact
             abs(state[XX]) >= 2.0,  # Rocket moves out of x-space
             state[YY] < -1 or state[YY] > 3,  # Rocket moves out of y-space or below barge
-            #abs(state[THETA]) > THETA_LIMIT # Rocket tilts greater than the "controllable" limit
+            # abs(state[THETA]) > THETA_LIMIT # Rocket tilts greater than the "controllable" limit
         ]
         done = False
         if any(state_reset_conditions):
@@ -256,7 +252,8 @@ class RocketLander(gym.Env):
                 m_power = (np.clip(action[0], 0.0, 1.0) + 1.0) * 0.3  # 0.3..1.6
                 assert m_power >= 0.3 and m_power <= 1.0
                 # ------------------------------------------------------------------------
-                ox = sin * (4 / SCALE + 2 * dispersion[0]) - cos * dispersion[1]  # 4 is move a bit downwards, +-2 for randomness
+                ox = sin * (4 / SCALE + 2 * dispersion[0]) - cos * dispersion[
+                    1]  # 4 is move a bit downwards, +-2 for randomness
                 oy = -cos * (4 / SCALE + 2 * dispersion[0]) - sin * dispersion[1]
                 impulse_pos = (rocketPart.position[0] + ox, rocketPart.position[1] + oy)
 
@@ -284,10 +281,10 @@ class RocketLander(gym.Env):
         sin = math.sin(self.lander.angle)  # for readability
         cos = math.cos(self.lander.angle)
         s_power = 0.0
-        y_dir = 1 # Positioning for the side Thrusters
+        y_dir = 1  # Positioning for the side Thrusters
         engine_dir = 0
         if (self.settings['Side Engines']):  # Check if side gas thrusters are enabled
-            if (np.abs(action[1]) > 0.5): # Have to be > 0.5
+            if (np.abs(action[1]) > 0.5):  # Have to be > 0.5
                 # Orientation engines
                 engine_dir = np.sign(action[1])
                 s_power = np.clip(np.abs(action[1]), 0.5, 1.0)
@@ -353,7 +350,7 @@ class RocketLander(gym.Env):
             1.0 if self.legs[0].ground_contact else 0.0,
             1.0 if self.legs[1].ground_contact else 0.0
         ]
-        #print(state)
+        print(vel, self.lander.angularVelocity)
         untransformed_state = [pos.x, pos.y, vel.x, vel.y, self.lander.angle, self.lander.angularVelocity]
 
         return state, untransformed_state
@@ -381,6 +378,7 @@ class RocketLander(gym.Env):
         return reward / 10
 
     """ PROBLEM SPECIFIC - RENDERING and OBJECT CREATION"""
+
     def _create_rocket(self, initial_coordinates):
         self.initial_coordinates = initial_coordinates
 
@@ -395,7 +393,7 @@ class RocketLander(gym.Env):
                 density=5.0,
                 friction=0.1,
                 categoryBits=0x0010,
-                maskBits=0x001,   # collide only with ground
+                maskBits=0x001,  # collide only with ground
                 restitution=0.0)  # 0.99 bouncy
         )
         self.lander.color1 = body_color
@@ -485,26 +483,13 @@ class RocketLander(gym.Env):
         return
 
     # Problem specific - LINKED
-    def _create_base_static_edges(self):
-        # Main Base
-        self.main_base = self.world.CreateStaticBody(shapes=edgeShape(vertices=[(0, 0), (W, 0)]))
-
-        left_barge_edge_coordinates = [left_const_barge_coordinates_edges[2], left_const_barge_coordinates_edges[3]]
-
-        barge_base = self.world.CreateStaticBody(shapes=edgeShape(vertices=left_barge_edge_coordinates))
-        self._create_static_edge(barge_base, left_barge_edge_coordinates, friction=BARGE_FRICTION)
-
-        right_barge_edge_coordinates = ([right_const_barge_coordinates_edges[2], right_const_barge_coordinates_edges[3]])
-        barge_base = self.world.CreateStaticBody(shapes=edgeShape(vertices=right_barge_edge_coordinates))
-        self._create_static_edge(barge_base, right_barge_edge_coordinates, friction=BARGE_FRICTION)
-
-    @staticmethod
-    def _create_static_edge(base, vertices, friction):
-        base.CreateEdgeFixture(
-            vertices=vertices,
-            density=0,
-            friction=friction)
-        return
+    def _create_barges(self):
+        self.left_barge = self.world.CreateStaticBody(
+            fixtures=fixtureDef(shape=polygonShape(vertices=left_const_barge_coordinates_edges))
+        )
+        self.right_barge = self.world.CreateStaticBody(
+            fixtures=fixtureDef(shape=polygonShape(vertices=right_const_barge_coordinates_edges))
+        )
 
     def _create_particle(self, mass, x, y, ttl, radius=3):
         """
@@ -563,7 +548,7 @@ class RocketLander(gym.Env):
         self.draw_marker(x=self.lander.worldCenter.x, y=self.lander.worldCenter.y)  # Center of Gravity
         self.draw_marker(x=self.landing_coordinates[0], y=self.landing_coordinates[1])
 
-        #return self.viewer.render(return_rgb_array=mode == 'rgb_array')
+        # return self.viewer.render(return_rgb_array=mode == 'rgb_array')
 
     def render(self, mode='rgb_array'):
         return self._render(mode)
@@ -623,6 +608,7 @@ class RocketLander(gym.Env):
         # --------------------------------------------------------------------------------------------------------------
 
     """ CALLABLE DURING RUNTIME """
+
     def draw_marker(self, x, y):
         """
         Draws a black '+' sign at the x and y coordinates.
@@ -665,8 +651,8 @@ class RocketLander(gym.Env):
             state = self.state
         return flatten_array([state, [self.remaining_fuel,
                                       self.lander.mass],
-                                      self.get_barge_top_edge_points(),
-                                      self.get_landing_coordinates()])
+                              self.get_barge_top_edge_points(),
+                              self.get_landing_coordinates()])
 
     def apply_random_x_disturbance(self, epsilon, left_or_right, x_force=2000):
         if np.random.rand() < epsilon:
