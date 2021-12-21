@@ -13,7 +13,8 @@ if __name__ == "__main__":
 
     env = RocketLander(settings)
     s = env.reset()
-    agent = PIDTuned3()
+    agent = PIDTuned2()
+    display_name = 'PID2'
     episode_number = 200
 
     # Statistics
@@ -42,7 +43,7 @@ if __name__ == "__main__":
                 env.reset()
                 break
 
-    print(f'PID3 success rate {total_successes}/{episode_number} ({total_successes / episode_number * 100}%)')
+    print(f'{display_name} success rate {total_successes}/{episode_number} ({total_successes / episode_number * 100}%)')
     plt.plot(average_total_rewards)
-    plt.title('PID3 average reward')
+    plt.title(display_name + ' average reward')
     plt.show()

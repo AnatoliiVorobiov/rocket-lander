@@ -1,6 +1,3 @@
-import math
-
-
 # ~50%
 class PIDTuned:
     def __init__(self):
@@ -23,33 +20,10 @@ class PIDTuned:
         return Fe, Fs, psi
 
 
-# 14.5%
+# 33.5%
 class PIDTuned2:
     def __init__(self):
         super(PIDTuned2, self).__init__()
-        self.Fe_PID = PIDHelper(0.001, 0, 0.001)
-        self.psi_PID = PIDHelper(0.085, 0.001, 10.55)
-        self.Fs_theta_PID = PIDHelper(5, 0, 6)
-
-    def pid_algorithm(self, s):
-        dx, dy, vel_x, vel_y, theta, omega, leg_contact_left, leg_contact_right = s
-
-        tmp_dy = math.copysign(min(abs(dy), 0.2), dy)
-        Fe = self.Fe_PID.compute_output(min(abs(dx), 0.3)*0.4 - tmp_dy*0.5)
-        Fs = self.Fs_theta_PID.compute_output(theta*5) * max(Fe*10, 0.5)
-        psi = self.psi_PID.compute_output(theta + dx/5)
-
-        if leg_contact_left and leg_contact_right:  # legs have contact
-            Fe = 0
-            Fs = 0
-
-        return Fe, Fs, psi
-
-
-# 33.5%
-class PIDTuned3:
-    def __init__(self):
-        super(PIDTuned3, self).__init__()
         self.Fe_PID = PIDHelper(5, 0, 5)
         self.psi_PID = PIDHelper(1, 0.001, 10)
         self.Fs_theta_PID = PIDHelper(5, 0, 6)
