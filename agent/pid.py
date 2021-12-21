@@ -20,7 +20,7 @@ class PIDTuned1:
         return Fe, Fs, psi
 
 
-# 33.5%
+# 24-33.5%
 class PIDTuned2:
     def __init__(self):
         super(PIDTuned2, self).__init__()
@@ -39,7 +39,6 @@ class PIDTuned2:
             Fe = 0
             Fs = 0
 
-        # print(Fe, Fs, psi)
         return Fe, Fs, psi
 
 
