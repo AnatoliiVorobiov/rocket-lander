@@ -211,10 +211,14 @@ class RocketLander(gym.Env):
             done = True
             reward = -10
             print('Conditions', state_reset_conditions, state[YY], state[XX])
-        if not self.lander.awake or self.game_over:
+        if not self.lander.awake:
             done = True
-            reward = +10
+            reward = -1000
             print('Lander.awake')
+        if self.game_over:
+            done = True
+            reward = 1000
+            print('Game over')
         if self.steps_limit == 0:
             done = True
             reward = -10

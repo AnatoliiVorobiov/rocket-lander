@@ -8,12 +8,22 @@ S_SIZE = 8  # number of variables in a state
 N_CONTROLLERS = 3
 N_TABLES = N_CONTROLLERS * 3
 
-N_CHUNKS = [10, 10, 10, 10, 10, 10, 2, 2]
-MIN = [0, 0,  -3, -3, -1, -1, 0, 0]
-MAX = [2, 1.3, 3,  3,  1,  1, 1, 1]
+N_CHUNKS = [ 4,  3,  4,  4,     4,  2, 2, 2]
+MIN =      [-2, -1, -3, -1, -3.14, -1, 0, 0]
+MAX =      [ 2,  2,  3,  1,  3.14,  1, 1, 1]
 CHUNK_MULTIPLIER = list(N_CHUNKS[i] / (MAX[i] - MIN[i]) for i in range(S_SIZE))
 
-K = list(i/10 for i in range(-5, 20))
+N_K = 5
+K = [list(i * 0.001 * 2 / N_K for i in range(N_K)),
+     list(i * 0.001 * 2 / N_K for i in range(N_K)),
+     list(i * 0.001 * 2 / N_K for i in range(N_K)),
+     list(i * 0.085 * 2 / N_K for i in range(N_K)),
+     list(i * 0.001 * 2 / N_K for i in range(N_K)),
+     list(i * 10.55 * 2 / N_K for i in range(N_K)),
+     list(i * 5 * 2 / N_K for i in range(N_K)),
+     list(i * 5.5 * 2 / N_K for i in range(N_K)),
+     list(i * 6 * 2 / N_K for i in range(N_K)),
+     ]
 
 
 class QPIDAgent:
@@ -33,7 +43,24 @@ class QPIDAgent:
     def discretize(s):
         """Discretize state from environment to int values from 0 to N_CHUNKS (excluded)"""
         discrete_s = []
-        for i in range(S_SIZE):
+
+        if s[0] < -0.3:
+            discrete_s.append(0)
+        elif s[0] < 0:
+            discrete_s.append(1)
+        elif s[0] < 0.3:
+            discrete_s.append(2)
+        else:
+            discrete_s.append(3)
+
+        if s[1] < 0:
+            discrete_s.append(0)
+        elif s[1] < 0.1:
+            discrete_s.append(1)
+        else:
+            discrete_s.append(2)
+
+        for i in range(2, S_SIZE):
             if s[i] <= MIN[i]:
                 discrete_s.append(0)
             elif s[i] >= MAX[i]:
@@ -45,7 +72,7 @@ class QPIDAgent:
     @staticmethod
     def new_tables():
         # (number of chunks for s[0], ..., number of chunks for s[7], number of tables, number of possible coefficients)
-        tables = np.zeros(N_CHUNKS + [N_TABLES, len(K)])
+        tables = np.zeros(N_CHUNKS + [N_TABLES, N_K])
         return tables
 
     def save_tables(self, save_path):
@@ -62,11 +89,11 @@ class QPIDAgent:
         Note: it returns generator, not a list"""
         s_d = self.discretize(s)
         if eps > 0 and random.random() < eps:
-            k_indices = np.random.randint(low=len(K), size=N_TABLES)
+            k_indices = np.random.randint(low=N_K, size=N_TABLES)
         else:
             k_indices = self.tables[s_d].argmax(axis=1)
 
-        coefficients = (K[i] for i in k_indices)
+        coefficients = (K[i][k_indices[i]] for i in range(N_TABLES))
 
         self.prev_s_d = s_d
         self.prev_k_indices = k_indices
@@ -82,7 +109,7 @@ class QPIDAgent:
         new_s_d = self.discretize(new_s)
 
         # update tables 1-3 and 4-6 based and reward from env
-        prev_mask = np.zeros(shape=(N_TABLES, len(K)), dtype=bool)
+        prev_mask = np.zeros(shape=(N_TABLES, N_K), dtype=bool)
         for table_i in range(N_TABLES-3):  # exclude last 3 tables
             prev_mask[table_i, self.prev_k_indices[table_i]] = True
 
@@ -94,11 +121,11 @@ class QPIDAgent:
         prev_table_view[prev_mask] = prev_table_view[prev_mask] + td
 
         # update tables 7-9 based on rocket angle
-        prev_mask = np.zeros(shape=(N_TABLES, len(K)), dtype=bool)
+        prev_mask = np.zeros(shape=(N_TABLES, N_K), dtype=bool)
         for table_i in range(6, N_TABLES):  # only last 3 tables
             prev_mask[table_i, self.prev_k_indices[table_i]] = True
-        reward = -(100 * abs(new_s[4]) + abs(new_s[5]))  # reward for PID3 is based on rocket angle
-        #print('new_s[4], new_s[5], nitro reward: ', new_s[4], new_s[5], reward)
+
+        reward = -abs(new_s[4])  # reward for PID3 is based on rocket angle
 
         prev_table_view = self.tables[self.prev_s_d]
 
@@ -113,15 +140,11 @@ class QPIDAgent:
         kp1, ki1, kd1, kp2, ki2, kd2, kp3, ki3, kd3 = self.get_coefficients(s, eps)
         dx, dy, vel_x, vel_y, theta, theta_dot, leg_contact_left, leg_contact_right = s
 
-        xy_error = math.sqrt(dx*dx+dy*dy)
-        eng = self.pids[0].compute_output(xy_error, kp1, ki1, kd1)
-        nuzzle_angle = self.pids[1].compute_output(xy_error, kp2, ki2, kd2)
+        Fe = self.pids[0].compute_output(min(abs(dx), 0.3)*0.4 - dy*0.2, kp1, ki1, kd1)
+        Fs = self.pids[1].compute_output(theta*5, kp2, ki2, kd2)
+        psi = self.pids[2].compute_output(theta + dx/5, kp3, ki3, kd3)
 
-        theta_error = abs(theta) + abs(theta_dot)
-        nitro = self.pids[2].compute_output(theta_error, kp3, ki3, kd3)
-
-        # environment already limits actions to their ranges, so we don't need to limit those manually
-        return eng, nitro, nuzzle_angle
+        return Fe, Fs, psi
 
 
 class PIDController:

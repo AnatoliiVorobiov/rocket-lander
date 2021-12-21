@@ -1,7 +1,6 @@
 from environments.rocketlander import RocketLander
-from constants import LEFT_GROUND_CONTACT, RIGHT_GROUND_CONTACT
 import numpy as np
-from agent.pid import PIDTuned
+from agent.pid import *
 
 
 if __name__ == "__main__":
@@ -19,7 +18,7 @@ if __name__ == "__main__":
 
     left_or_right_barge_movement = np.random.randint(0, 2)
     total_reward = 0
-    episode_number = 1000
+    episode_number = 100
 
     for episode in range(episode_number):
         while 1:
@@ -31,12 +30,6 @@ if __name__ == "__main__":
             env.render('human')
             env.refresh(render=False)
 
-            # if s[LEFT_GROUND_CONTACT] == 0 and s[RIGHT_GROUND_CONTACT] == 0:
-            #     # Random Force on rocket to simulate wind.
-            #     env.apply_random_x_disturbance(epsilon=0.005, left_or_right=left_or_right_barge_movement)
-            #     env.apply_random_y_disturbance(epsilon=0.005)
-
-            # Touch down or pass abs(THETA_LIMIT)
             if done:
                 print('Episode:\t{}\tTotal Reward:\t{}'.format(episode, total_reward))
                 total_reward = 0

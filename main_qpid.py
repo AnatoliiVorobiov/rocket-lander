@@ -1,5 +1,4 @@
 from environments.rocketlander import RocketLander
-from constants import LEFT_GROUND_CONTACT, RIGHT_GROUND_CONTACT
 import numpy as np
 from agent.qpid import QPIDAgent
 
@@ -18,15 +17,14 @@ if __name__ == "__main__":
     agent = QPIDAgent()
 
     left_or_right_barge_movement = np.random.randint(0, 2)
-    epsilon = 0.1
+    epsilon = 0.9
     total_reward = 0
-    episode_number = 1000
-    lr = 0.01
+    episode_number = 100
+    lr = 0.1
     discount = 0.9
 
     for episode in range(episode_number):
-        if episode % 5 == 0:
-            print('episode', episode)
+        epsilon -= 0.1
         while 1:
             action = agent.get_actions(s, epsilon)
 
@@ -35,16 +33,10 @@ if __name__ == "__main__":
 
             agent.update_tables(s, r, lr, discount)
 
-            if episode % 5 == 0:
+            if episode % 10 == 0 or (episode > 50 and episode % 5 == 0) or (episode > 100 and episode % 2 == 0) or episode > 150:
                 env.render('human')
                 env.refresh(render=False)
 
-            if s[LEFT_GROUND_CONTACT] == 0 and s[RIGHT_GROUND_CONTACT] == 0:
-                # Random Force on rocket to simulate wind.
-                env.apply_random_x_disturbance(epsilon=0.005, left_or_right=left_or_right_barge_movement)
-                env.apply_random_y_disturbance(epsilon=0.005)
-
-            # Touch down or pass abs(THETA_LIMIT)
             if done:
                 print('Episode:\t{}\tTotal Reward:\t{}'.format(episode, total_reward))
                 total_reward = 0
