@@ -29,8 +29,8 @@ if __name__ == "__main__":
             s, r, done, info = env.step(action)
             total_reward += r
 
-            env.render('human')
-            env.refresh(render=False)
+            # env.render('human')
+            # env.refresh(render=False)
 
             if done:
                 print('Episode:\t{}\tTotal Reward:\t{}'.format(episode, total_reward))
@@ -42,6 +42,7 @@ if __name__ == "__main__":
                 env.reset()
                 break
 
-        print(f'Success rate {total_successes}/{episode_number} ({total_successes / episode_number * 100}%)')
-        plt.plot(average_total_rewards)
-        plt.show()
+    print(f'PID success rate {total_successes}/{episode_number} ({total_successes / episode_number * 100}%)')
+    plt.plot(average_total_rewards)
+    plt.title('PID average reward')
+    plt.show()
