@@ -1,6 +1,6 @@
 from environments.rocketlander import RocketLander
-import numpy as np
 from agent.qpid import QPIDAgent
+import matplotlib.pyplot as plt
 
 
 if __name__ == "__main__":
@@ -13,18 +13,22 @@ if __name__ == "__main__":
 
     env = RocketLander(settings)
     s = env.reset()
-
     agent = QPIDAgent()
+    episode_number = 200
 
-    left_or_right_barge_movement = np.random.randint(0, 2)
+    # Q-tables parameters
     epsilon = 0.9
-    total_reward = 0
-    episode_number = 100
-    lr = 0.1
+    lr = 0.2
     discount = 0.9
 
+    # Statistics
+    total_reward = 0
+    average_total_reward = 0
+    average_total_rewards = []
+    total_successes = 0
+
     for episode in range(episode_number):
-        epsilon -= 0.1
+        epsilon -= 0.01
         while 1:
             action = agent.get_actions(s, epsilon)
 
@@ -39,6 +43,14 @@ if __name__ == "__main__":
 
             if done:
                 print('Episode:\t{}\tTotal Reward:\t{}'.format(episode, total_reward))
+                average_total_reward = average_total_reward + 1 / (episode + 1) * (
+                            total_reward - average_total_reward)
+                average_total_rewards.append(average_total_reward)
+                total_successes += info['success']
                 total_reward = 0
                 env.reset()
                 break
+
+        print(f'Success rate {total_successes}/{episode_number} ({total_successes / episode_number * 100}%)')
+        plt.plot(average_total_rewards)
+        plt.show()

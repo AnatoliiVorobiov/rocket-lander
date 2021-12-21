@@ -1,6 +1,6 @@
 from environments.rocketlander import RocketLander
-import numpy as np
 from agent.pid import *
+import matplotlib.pyplot as plt
 
 
 if __name__ == "__main__":
@@ -13,12 +13,14 @@ if __name__ == "__main__":
 
     env = RocketLander(settings)
     s = env.reset()
-
     agent = PIDTuned()
+    episode_number = 200
 
-    left_or_right_barge_movement = np.random.randint(0, 2)
+    # Statistics
     total_reward = 0
-    episode_number = 100
+    average_total_reward = 0
+    average_total_rewards = []
+    total_successes = 0
 
     for episode in range(episode_number):
         while 1:
@@ -32,6 +34,14 @@ if __name__ == "__main__":
 
             if done:
                 print('Episode:\t{}\tTotal Reward:\t{}'.format(episode, total_reward))
+                average_total_reward = average_total_reward + 1 / (episode + 1) * (
+                        total_reward - average_total_reward)
+                average_total_rewards.append(average_total_reward)
+                total_successes += info['success']
                 total_reward = 0
                 env.reset()
                 break
+
+        print(f'Success rate {total_successes}/{episode_number} ({total_successes / episode_number * 100}%)')
+        plt.plot(average_total_rewards)
+        plt.show()

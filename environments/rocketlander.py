@@ -150,6 +150,7 @@ class RocketLander(gym.Env):
 
     def _step(self, action):
         assert len(action) == 3  # Fe, Fs, psi
+        info = {}
 
         # Check for contact with the ground
         #if (self.legs[0].ground_contact and self.legs[1].ground_contact) and self.CONTACT_FLAG == False:
@@ -219,6 +220,7 @@ class RocketLander(gym.Env):
             done = True
             reward = 1000
             print('Game over')
+        info['success'] = self.game_over
         if self.steps_limit == 0:
             done = True
             reward = -10
@@ -228,7 +230,7 @@ class RocketLander(gym.Env):
         self.steps_limit -= 1
         self._update_particles()
 
-        return np.array(state), reward, done, {}  # {} = info (required by parent class)
+        return np.array(state), reward, done, info
 
     def step(self, action):
         return self._step(action)
