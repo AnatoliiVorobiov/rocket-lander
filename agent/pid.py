@@ -1,9 +1,9 @@
-# ~50%
-class PIDTuned:
+# 58%
+class PIDTuned1:
     def __init__(self):
-        super(PIDTuned, self).__init__()
+        super(PIDTuned1, self).__init__()
         self.Fe_PID = PIDHelper(0.001, 0, 0.001)
-        self.psi_PID = PIDHelper(0.085, 0.001, 10.55)
+        self.psi_PID = PIDHelper(0.08, 0.001, 10)
         self.Fs_theta_PID = PIDHelper(5, 0, 6)
 
     def pid_algorithm(self, s):

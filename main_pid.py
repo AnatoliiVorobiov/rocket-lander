@@ -13,8 +13,8 @@ if __name__ == "__main__":
 
     env = RocketLander(settings)
     s = env.reset()
-    agent = PIDTuned2()
-    display_name = 'PID2'
+    agent = PIDTuned1()
+    display_name = 'PID1'
     episode_number = 200
 
     # Statistics
