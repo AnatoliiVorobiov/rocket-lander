@@ -12,7 +12,6 @@ from itertools import chain
 from constants import *
 import numpy as np
 
-# This contact detector is equivalent the one implemented in Lunar Lander
 from constants import BARGE_LENGTH_X1_RATIO, BARGE_LENGTH_X2_RATIO
 
 
@@ -29,7 +28,8 @@ class ContactDetector(contactListener):
             game_over = True
             for leg in self.env.legs:
                 game_over = game_over and leg.ground_contact
-            self.env.game_over = game_over and abs(self.env.lander.linearVelocity.x) < 1 and abs(self.env.lander.linearVelocity.y) < 1
+            self.env.game_over = game_over and abs(self.env.lander.linearVelocity.x) < 1 and abs(
+                self.env.lander.linearVelocity.y) < 1
 
     def EndContact(self, contact):
         if self.env.left_barge == contact.fixtureA.body or self.env.left_barge == contact.fixtureB.body:
@@ -82,7 +82,7 @@ class RocketLander(gym.Env):
         self.state = []
         self.prev_shaping = None
 
-        self.observation_space = spaces.Box(-np.inf, +np.inf, (8,), dtype=np.float32)
+        self.observation_space = spaces.Box(np.array([-2, -1, -np.inf, -np.inf, -3.14, -1, 0, 0]), np.array([2, 3, np.inf, np.inf, 3.14, 1, 1, 1]), dtype=np.float32) # (x - distance, y -distance, velX, velY, angel, angelVel, leftIsLanded, rightIsLanded)
         self.lander_tilt_angle_limit = THETA_LIMIT
 
         self.game_over = False
@@ -93,7 +93,8 @@ class RocketLander(gym.Env):
 
         self.impulsePos = (0, 0)
 
-        self.action_space = [0, 0, 0]  # Main Engine, Nozzle Angle, Left/Right Engine
+        #self.action_space = spaces.Box(np.array([[0], [0, -1], [-0.261]]), np.array([[1], [1, 0], [0.261]]), dtype=np.float32)  # Main Engine, Nozzle Angle, Left/Right Engine
+        self.action_space = spaces.Box(np.array([0, -1, -0.261]), np.array([1, 1, 0.261]), dtype=np.float32)  # Main Engine, Nozzle Angle, Left/Right Engine
         self.untransformed_state = [0] * 6  # Non-normalized state
 
         self.steps_limit = 10000
@@ -104,6 +105,7 @@ class RocketLander(gym.Env):
         self._reset()
 
     """ INHERITED """
+
     def _seed(self, seed=None):
         self.np_random, returned_seed = seeding.np_random(seed)
         return returned_seed
@@ -152,12 +154,6 @@ class RocketLander(gym.Env):
         assert len(action) == 3  # Fe, Fs, psi
         info = {}
 
-        # Check for contact with the ground
-        #if (self.legs[0].ground_contact and self.legs[1].ground_contact) and self.CONTACT_FLAG == False:
-        #    self.CONTACT_FLAG = True
-
-        # self.lander.angle = 0
-        # self.lander.position = (3, 2.9)
         # Shutdown all Engines upon contact with the ground
         if self.CONTACT_FLAG:
             action = [0, 0, 0]
@@ -169,9 +165,6 @@ class RocketLander(gym.Env):
                 part.angle = NOZZLE_ANGLE_LIMIT
             elif part.angle < -NOZZLE_ANGLE_LIMIT:
                 part.angle = -NOZZLE_ANGLE_LIMIT
-            # part.joint.motorSpeed = float(action[2]) # action[2] is in radians
-            # That means having a value of 2*pi will rotate at 360 degrees / second
-            # A transformation can be done on the action, such as clipping the value
         else:
             part = self.lander
 
@@ -180,9 +173,6 @@ class RocketLander(gym.Env):
         if self.lander.angle < -math.pi:
             self.lander.angle += math.pi * 2
 
-        # Main Force Calculations
-        # if self.remaining_fuel == 0:
-        #     logging.info("Strictly speaking, you're out of fuel, but act anyway.")
         m_power = self.__main_engines_force_computation(action, rocketPart=part)
         s_power, engine_dir = self.__side_engines_force_computation(action)
 
@@ -234,8 +224,6 @@ class RocketLander(gym.Env):
 
     def step(self, action):
         return self._step(action)
-
-    """ PROBLEM SPECIFIC - PHYSICS, STATES, REWARDS"""
 
     def __main_engines_force_computation(self, action, rocketPart, *args):
         # ----------------------------------------------------------------------------
